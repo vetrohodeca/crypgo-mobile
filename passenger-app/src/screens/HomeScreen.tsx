@@ -2,31 +2,30 @@
  * HomeScreen — Главен екран за пътника.
  *
  * Показва:
- *   - Карта (MapView) на цял екран с текущата позиция на пътника
+ *   - OSM карта на цял екран с текущата позиция на пътника
  *   - Маркер на най-близкия свободен шофьор (GEORADIUS)
  *   - Бутон "Заяви курс" → RequestRideScreen
  */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
-import { locationApi } from '@cryptgo/shared';
-import type { NearestDriverResult } from '@cryptgo/shared';
+import { locationApi, OsmMap } from '@cryptgo/shared';
+import type { NearestDriverResult, OsmMapRef } from '@cryptgo/shared';
 import { useLocation }   from '@cryptgo/shared';
 import { useAuthStore }  from '@/store/useAuthStore';
 import { useOrderStore } from '@/store/useOrderStore';
 import type { AppNavProp } from '@/navigation/types';
 
-const SOFIA = { latitude: 42.6977, longitude: 23.3219 };
+const SOFIA = { lat: 42.6977, lng: 23.3219 };
 
 export default function HomeScreen() {
   const navigation   = useNavigation<AppNavProp>();
   const logout       = useAuthStore((s) => s.logout);
   const currentOrder = useOrderStore((s) => s.currentOrder);
+  const mapRef       = useRef<OsmMapRef>(null);
 
   const [nearestDriver, setNearestDriver] = useState<NearestDriverResult | null>(null);
   const [loadingDriver, setLoadingDriver] = useState(false);
@@ -40,14 +39,18 @@ export default function HomeScreen() {
     })();
   }, []);
 
+  // Центрираме картата при промяна на позицията
+  useEffect(() => {
+    if (currentLocation) {
+      mapRef.current?.panTo(currentLocation.lat, currentLocation.lng, 15);
+    }
+  }, [currentLocation]);
+
   const fetchNearestDriver = useCallback(async () => {
     if (!currentLocation) return;
     setLoadingDriver(true);
     try {
-      const driver = await locationApi.nearestDriver(
-        currentLocation.lat,
-        currentLocation.lng,
-      );
+      const driver = await locationApi.nearestDriver(currentLocation.lat, currentLocation.lng);
       setNearestDriver(driver);
     } catch {
       // тихо — няма наличен шофьор
@@ -71,36 +74,22 @@ export default function HomeScreen() {
     }
   }, [currentOrder]);
 
-  const mapRegion = currentLocation
-    ? { latitude: currentLocation.lat, longitude: currentLocation.lng, latitudeDelta: 0.02, longitudeDelta: 0.02 }
-    : { ...SOFIA, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+  const center = currentLocation ?? SOFIA;
+
+  const markers = nearestDriver
+    ? [{ lat: nearestDriver.lat, lng: nearestDriver.lng, label: `🚕 ${nearestDriver.distanceKm.toFixed(2)} км`, color: '#F7931A' }]
+    : [];
 
   return (
     <View style={styles.container}>
-      {/* Map — full screen */}
-      <MapView
+      {/* OSM карта — цял екран */}
+      <OsmMap
+        ref={mapRef}
+        center={center}
+        zoom={14}
+        markers={markers}
         style={StyleSheet.absoluteFillObject}
-        mapType="none"
-        region={mapRegion}
-        showsUserLocation
-        showsMyLocationButton
-      >
-        <UrlTile
-          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maximumZ={19}
-          tileSize={256}
-          flipY={false}
-        />
-        {nearestDriver && (
-          <Marker
-            coordinate={{ latitude: nearestDriver.lat, longitude: nearestDriver.lng }}
-            title="Свободен шофьор"
-            description={`${nearestDriver.distanceKm.toFixed(2)} км от вас`}
-          >
-            <Text style={styles.driverEmoji}>🚕</Text>
-          </Marker>
-        )}
-      </MapView>
+      />
 
       {/* Logout — floating top-right */}
       <SafeAreaView style={styles.topBar} pointerEvents="box-none">
@@ -139,9 +128,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container:   { flex: 1 },
-  driverEmoji: { fontSize: 28 },
 
-  // Floating logout button
   topBar: {
     position: 'absolute', top: 0, right: 0, left: 0,
     flexDirection: 'row', justifyContent: 'flex-end',
@@ -155,7 +142,6 @@ const styles = StyleSheet.create({
   },
   logoutText: { color: '#F7931A', fontWeight: '600', fontSize: 14 },
 
-  // Bottom panel
   panel: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: '#fff',

@@ -2,22 +2,17 @@
  * TrackingScreen — Real-time проследяване на шофьора.
  *
  * Polling на статуса на поръчката на всеки 3с.
- * WebSocket за GPS позицията на шофьора и geofencing trigger (order:arrived).
- *
- * Фази:
- *   ACCEPTED    → шофьорът идва за пътника, бутонът не се показва
- *   IN_PROGRESS → курсът е в ход, бутонът "Потвърди пристигане" е видим
- *   COMPLETED   → плащането е освободено, навигация към начало
+ * WebSocket за GPS позицията на шофьора и geofencing trigger.
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, Alert, TouchableOpacity,
-  ActivityIndicator,
+  ActivityIndicator, SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import { SafeAreaView as SafeArea } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { ordersApi } from '@cryptgo/shared';
+import { ordersApi, OsmMap } from '@cryptgo/shared';
+import type { OsmMapRef, OsmMarker } from '@cryptgo/shared';
 import { useWebSocket } from '@cryptgo/shared';
 import { useAuthStore }  from '@/store/useAuthStore';
 import { useOrderStore } from '@/store/useOrderStore';
@@ -25,7 +20,7 @@ import type { AppStackParamList, AppNavProp } from '@/navigation/types';
 
 type Route = RouteProp<AppStackParamList, 'Tracking'>;
 
-interface DriverPosition { lat: number; lng: number; }
+const SOFIA = { lat: 42.6977, lng: 23.3219 };
 
 export default function TrackingScreen() {
   const navigation      = useNavigation<AppNavProp>();
@@ -36,11 +31,12 @@ export default function TrackingScreen() {
   const setCurrentOrder = useOrderStore((s) => s.setCurrentOrder);
   const clearOrder      = useOrderStore((s) => s.clear);
 
-  const [driverPos,   setDriverPos]   = useState<DriverPosition | null>(null);
-  const [completing,  setCompleting]  = useState(false);
-  const [geofenceHit, setGeofenceHit] = useState(false); // WebSocket geofencing trigger
-  const mapRef       = useRef<MapView>(null);
+  const mapRef       = useRef<OsmMapRef>(null);
   const mountedRef   = useRef(true);
+
+  const [driverPos,   setDriverPos]   = useState<{ lat: number; lng: number } | null>(null);
+  const [completing,  setCompleting]  = useState(false);
+  const [geofenceHit, setGeofenceHit] = useState(false);
 
   // ── Polling — статус на поръчката (всеки 3с) ─────────────────────
   useEffect(() => {
@@ -54,43 +50,33 @@ export default function TrackingScreen() {
 
         if (o.status === 'COMPLETED') {
           clearInterval(intervalId);
-          Alert.alert(
-            '✅ Курсът приключи',
-            'Плащането е освободено към шофьора. Благодарим!',
-            [{ text: 'OK', onPress: () => { clearOrder(); navigation.navigate('Tabs'); } }],
-          );
+          Alert.alert('✅ Курсът приключи', 'Плащането е освободено. Благодарим!',
+            [{ text: 'OK', onPress: () => { clearOrder(); navigation.navigate('Tabs'); } }]);
         }
         if (o.status === 'CANCELED') {
           clearInterval(intervalId);
-          Alert.alert('Поръчката е анулирана', '', [
-            { text: 'OK', onPress: () => { clearOrder(); navigation.navigate('Tabs'); } },
-          ]);
+          Alert.alert('Поръчката е анулирана', '',
+            [{ text: 'OK', onPress: () => { clearOrder(); navigation.navigate('Tabs'); } }]);
         }
-      } catch { /* тихо — не прекъсваме polling при временна мрежова грешка */ }
+      } catch { /* тихо */ }
     };
 
     fetchOrder();
     const intervalId = setInterval(fetchOrder, 3_000);
-    return () => {
-      mountedRef.current = false;
-      clearInterval(intervalId);
-    };
+    return () => { mountedRef.current = false; clearInterval(intervalId); };
   }, [params.orderId]);
 
-  // ── WebSocket — GPS позиция на шофьора + geofencing ──────────────
+  // ── WebSocket — GPS позиция на шофьора ────────────────────────────
   const { connected, joinOrder, leaveOrder } = useWebSocket({
     token: accessToken,
     onDriverLocation: useCallback((data) => {
       setDriverPos({ lat: data.lat, lng: data.lng });
-      mapRef.current?.animateToRegion({
-        latitude: data.lat, longitude: data.lng,
-        latitudeDelta: 0.01, longitudeDelta: 0.01,
-      }, 500);
+      mapRef.current?.panTo(data.lat, data.lng);
     }, []),
     onOrderArrived: useCallback((data) => {
       if (data.orderId === params.orderId) {
-        setGeofenceHit(true); // бутонът вече е видим при IN_PROGRESS — само подчертаваме
-        Alert.alert('🏁 Пристигнахте!', 'Шофьорът е на дестинацията. Потвърдете завършването.');
+        setGeofenceHit(true);
+        Alert.alert('🏁 Пристигнахте!', 'Потвърдете завършването.');
       }
     }, [params.orderId]),
   });
@@ -103,21 +89,18 @@ export default function TrackingScreen() {
   // ── Завършване — разкриване на preimage ──────────────────────────
   const handleComplete = async () => {
     if (!pendingInvoice?.preimage) {
-      Alert.alert('Грешка', 'Preimage не е наличен. Рестартирайте приложението.');
+      Alert.alert('Грешка', 'Preimage не е наличен.');
       return;
     }
     setCompleting(true);
     try {
-      // СИГУРНОСТ: preimage-ът се изпраща САМО при завършване на курса
+      // СИГУРНОСТ: preimage се изпраща САМО при завършване
       const completed = await ordersApi.complete(params.orderId, {
         preimage: pendingInvoice.preimage,
       });
       setCurrentOrder(completed);
-      Alert.alert(
-        '✅ Курсът приключи',
-        'Плащането е освободено към шофьора. Благодарим!',
-        [{ text: 'OK', onPress: () => { clearOrder(); navigation.navigate('Tabs'); } }],
-      );
+      Alert.alert('✅ Курсът приключи', 'Плащането е освободено към шофьора. Благодарим!',
+        [{ text: 'OK', onPress: () => { clearOrder(); navigation.navigate('Tabs'); } }]);
     } catch (err: any) {
       Alert.alert('Грешка', err?.response?.data?.message ?? 'Не може да се завърши.');
     } finally {
@@ -125,7 +108,7 @@ export default function TrackingScreen() {
     }
   };
 
-  const orderStatus = currentOrder?.status ?? 'ACCEPTED';
+  const orderStatus  = currentOrder?.status ?? 'ACCEPTED';
   const isInProgress = orderStatus === 'IN_PROGRESS';
 
   const statusLabels: Record<string, string> = {
@@ -136,45 +119,40 @@ export default function TrackingScreen() {
     CANCELED:    '❌ Анулиран',
   };
 
-  const dropoff = currentOrder
-    ? { latitude: Number(currentOrder.dropoff_lat), longitude: Number(currentOrder.dropoff_lng) }
-    : null;
+  // Маркери за картата
+  const center = driverPos ?? (currentOrder
+    ? { lat: Number(currentOrder.pickup_lat), lng: Number(currentOrder.pickup_lng) }
+    : SOFIA);
+
+  const markers: OsmMarker[] = [];
+  if (driverPos) {
+    markers.push({ lat: driverPos.lat, lng: driverPos.lng, label: '🚕 Шофьор', color: '#1a1a2e' });
+  }
+  if (currentOrder?.dropoff_lat) {
+    markers.push({
+      lat: Number(currentOrder.dropoff_lat),
+      lng: Number(currentOrder.dropoff_lng),
+      label: '🏁 Дестинация',
+      color: '#F7931A',
+    });
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeArea style={styles.container}>
       {/* Status bar */}
       <View style={[styles.statusBar, isInProgress && styles.statusBarActive]}>
         <View style={[styles.dot, connected ? styles.dotGreen : styles.dotRed]} />
         <Text style={styles.statusLabel}>{statusLabels[orderStatus] ?? orderStatus}</Text>
       </View>
 
-      {/* Map */}
-      <MapView
+      {/* OSM карта */}
+      <OsmMap
         ref={mapRef}
+        center={center}
+        zoom={14}
+        markers={markers}
         style={styles.map}
-        mapType="none"
-        initialRegion={{
-          latitude:       driverPos?.lat ?? 42.6977,
-          longitude:      driverPos?.lng ?? 23.3219,
-          latitudeDelta:  0.02,
-          longitudeDelta: 0.02,
-        }}
-      >
-        <UrlTile
-          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maximumZ={19}
-          tileSize={256}
-          flipY={false}
-        />
-        {driverPos && (
-          <Marker coordinate={{ latitude: driverPos.lat, longitude: driverPos.lng }} title="Шофьор">
-            <Text style={{ fontSize: 26 }}>🚕</Text>
-          </Marker>
-        )}
-        {dropoff && (
-          <Marker coordinate={dropoff} title="Дестинация" pinColor="#F7931A" />
-        )}
-      </MapView>
+      />
 
       {/* Bottom panel */}
       <View style={styles.panel}>
@@ -185,7 +163,6 @@ export default function TrackingScreen() {
           {currentOrder ? `${parseFloat(currentOrder.price_eur).toFixed(2)} EUR` : '—'}
         </Text>
 
-        {/* Бутонът е видим щом шофьорът е стартирал курса (IN_PROGRESS) */}
         {isInProgress && !completing && (
           <TouchableOpacity
             style={[styles.completeBtn, geofenceHit && styles.completeBtnPulse]}
@@ -202,26 +179,24 @@ export default function TrackingScreen() {
           </View>
         )}
 
-        {/* Хинт докато шофьорът не е стартирал */}
         {!isInProgress && (
           <Text style={styles.hint}>
             {orderStatus === 'ACCEPTED'
-              ? 'Шофьорът се придвижва към вас. Бутонът за потвърждение ще се появи при тръгване.'
+              ? 'Шофьорът се придвижва към вас.'
               : 'Освобождаването на плащането ще се задейства при пристигане.'}
           </Text>
         )}
       </View>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 
 const styles = StyleSheet.create({
-  container:  { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: '#fff' },
 
   statusBar: {
     flexDirection: 'row', alignItems: 'center',
     padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
   },
   statusBarActive: { backgroundColor: '#fff8f0' },
   dot:      { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
@@ -242,7 +217,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4caf50', borderRadius: 14,
     padding: 16, alignItems: 'center',
   },
-  completeBtnPulse: { backgroundColor: '#2e7d32' }, // по-тъмно когато geofencing потвърди
+  completeBtnPulse: { backgroundColor: '#2e7d32' },
   completeBtnText:  { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 
   completingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12 },

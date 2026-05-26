@@ -12,9 +12,8 @@ import {
   ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { ordersApi } from '@cryptgo/shared';
+import { ordersApi, OsmMap } from '@cryptgo/shared';
 import { useDriverStore } from '@/store/useDriverStore';
 import { setActiveOrderId } from '@/services/backgroundLocation.service';
 import type { Order }        from '@cryptgo/shared';
@@ -88,21 +87,16 @@ export default function OrderDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
-        {/* Map */}
-        <MapView
+        {/* OSM карта */}
+        <OsmMap
+          center={{ lat: midLat, lng: midLng }}
+          zoom={13}
+          markers={[
+            { lat: pickup.latitude,  lng: pickup.longitude,  label: '📍 Вземане',      color: '#4caf50' },
+            { lat: dropoff.latitude, lng: dropoff.longitude, label: '🏁 Дестинация',   color: '#f44336' },
+          ]}
           style={styles.map}
-          mapType="none"
-          initialRegion={{ latitude: midLat, longitude: midLng, latitudeDelta: delta, longitudeDelta: delta }}
-        >
-          <UrlTile
-            urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            maximumZ={19}
-            tileSize={256}
-            flipY={false}
-          />
-          <Marker coordinate={pickup}  title="Вземане" pinColor="#4caf50" />
-          <Marker coordinate={dropoff} title="Дестинация" pinColor="#f44336" />
-        </MapView>
+        />
 
         {/* Details */}
         <View style={styles.details}>

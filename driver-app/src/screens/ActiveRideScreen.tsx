@@ -15,9 +15,8 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { ordersApi }     from '@cryptgo/shared';
+import { ordersApi, OsmMap } from '@cryptgo/shared';
 import { useDriverStore } from '@/store/useDriverStore';
 import { setActiveOrderId, stopBackgroundTracking } from '@/services/backgroundLocation.service';
 import type { Order }    from '@cryptgo/shared';
@@ -34,7 +33,6 @@ export default function ActiveRideScreen() {
   const [order,    setOrder]    = useState<Order | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [acting,   setActing]   = useState(false);
-  const mapRef = useRef<MapView>(null);
 
   // Polling за статус на поръчката
   useEffect(() => {
@@ -152,22 +150,18 @@ export default function ActiveRideScreen() {
         </Text>
       </View>
 
-      {/* Map */}
-      <MapView
-        ref={mapRef}
+      {/* OSM карта */}
+      <OsmMap
+        center={{ lat: target.latitude, lng: target.longitude }}
+        zoom={15}
+        markers={[{
+          lat:   target.latitude,
+          lng:   target.longitude,
+          label: targetLabel,
+          color: isPickup ? '#4caf50' : '#f44336',
+        }]}
         style={styles.map}
-        mapType="none"
-        initialRegion={{ ...target, latitudeDelta: 0.02, longitudeDelta: 0.02 }}
-        showsUserLocation
-      >
-        <UrlTile
-          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maximumZ={19}
-          tileSize={256}
-          flipY={false}
-        />
-        <Marker coordinate={target} title={targetLabel} pinColor={isPickup ? '#4caf50' : '#f44336'} />
-      </MapView>
+      />
 
       {/* Bottom panel */}
       <View style={styles.panel}>

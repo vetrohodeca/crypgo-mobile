@@ -13,9 +13,9 @@ import {
   Switch, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
-import { useLocation }   from '@cryptgo/shared';
+import { useLocation, OsmMap } from '@cryptgo/shared';
+import type { OsmMarker } from '@cryptgo/shared';
 import { useAuthStore }  from '@/store/useAuthStore';
 import { useDriverStore } from '@/store/useDriverStore';
 import {
@@ -26,7 +26,7 @@ import {
 } from '@/services/backgroundLocation.service';
 import type { AppNavProp } from '@/navigation/types';
 
-const SOFIA = { latitude: 42.6977, longitude: 23.3219 };
+const SOFIA = { lat: 42.6977, lng: 23.3219 };
 
 export default function HomeScreen() {
   const navigation   = useNavigation<AppNavProp>();
@@ -86,9 +86,10 @@ export default function HomeScreen() {
     logout();
   };
 
-  const region = currentLocation
-    ? { latitude: currentLocation.lat, longitude: currentLocation.lng, latitudeDelta: 0.02, longitudeDelta: 0.02 }
-    : { ...SOFIA, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+  const center = currentLocation ?? SOFIA;
+  const myMarker: OsmMarker[] = currentLocation
+    ? [{ lat: currentLocation.lat, lng: currentLocation.lng, label: '🚕 Моята позиция', color: '#1a1a2e' }]
+    : [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -105,29 +106,13 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Map */}
-      <MapView
+      {/* OSM карта */}
+      <OsmMap
+        center={center}
+        zoom={14}
+        markers={myMarker}
         style={styles.map}
-        mapType="none"
-        region={region}
-        showsUserLocation
-        showsMyLocationButton
-      >
-        <UrlTile
-          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maximumZ={19}
-          tileSize={256}
-          flipY={false}
-        />
-        {currentLocation && (
-          <Marker
-            coordinate={{ latitude: currentLocation.lat, longitude: currentLocation.lng }}
-            title="Моята позиция"
-          >
-            <Text style={{ fontSize: 28 }}>🚕</Text>
-          </Marker>
-        )}
-      </MapView>
+      />
 
       {/* Bottom panel */}
       <View style={styles.panel}>
