@@ -12,7 +12,7 @@ import {
   ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ordersApi } from '@cryptgo/shared';
 import { useDriverStore } from '@/store/useDriverStore';
@@ -91,9 +91,15 @@ export default function OrderDetailScreen() {
         {/* Map */}
         <MapView
           style={styles.map}
-          provider={PROVIDER_DEFAULT}
+          mapType="none"
           initialRegion={{ latitude: midLat, longitude: midLng, latitudeDelta: delta, longitudeDelta: delta }}
         >
+          <UrlTile
+            urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maximumZ={19}
+            tileSize={256}
+            flipY={false}
+          />
           <Marker coordinate={pickup}  title="Вземане" pinColor="#4caf50" />
           <Marker coordinate={dropoff} title="Дестинация" pinColor="#f44336" />
         </MapView>

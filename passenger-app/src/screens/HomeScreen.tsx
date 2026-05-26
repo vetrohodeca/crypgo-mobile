@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
 import { locationApi } from '@cryptgo/shared';
 import type { NearestDriverResult } from '@cryptgo/shared';
@@ -80,11 +80,17 @@ export default function HomeScreen() {
       {/* Map — full screen */}
       <MapView
         style={StyleSheet.absoluteFillObject}
-        provider={PROVIDER_DEFAULT}
+        mapType="none"
         region={mapRegion}
         showsUserLocation
         showsMyLocationButton
       >
+        <UrlTile
+          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maximumZ={19}
+          tileSize={256}
+          flipY={false}
+        />
         {nearestDriver && (
           <Marker
             coordinate={{ latitude: nearestDriver.lat, longitude: nearestDriver.lng }}

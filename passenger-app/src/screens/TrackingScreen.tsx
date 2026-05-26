@@ -15,7 +15,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ordersApi } from '@cryptgo/shared';
 import { useWebSocket } from '@cryptgo/shared';
@@ -152,7 +152,7 @@ export default function TrackingScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_DEFAULT}
+        mapType="none"
         initialRegion={{
           latitude:       driverPos?.lat ?? 42.6977,
           longitude:      driverPos?.lng ?? 23.3219,
@@ -160,6 +160,12 @@ export default function TrackingScreen() {
           longitudeDelta: 0.02,
         }}
       >
+        <UrlTile
+          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maximumZ={19}
+          tileSize={256}
+          flipY={false}
+        />
         {driverPos && (
           <Marker coordinate={{ latitude: driverPos.lat, longitude: driverPos.lng }} title="Шофьор">
             <Text style={{ fontSize: 26 }}>🚕</Text>

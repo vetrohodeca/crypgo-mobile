@@ -13,7 +13,7 @@ import {
   Switch, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
 import { useLocation }   from '@cryptgo/shared';
 import { useAuthStore }  from '@/store/useAuthStore';
@@ -108,11 +108,17 @@ export default function HomeScreen() {
       {/* Map */}
       <MapView
         style={styles.map}
-        provider={PROVIDER_DEFAULT}
+        mapType="none"
         region={region}
         showsUserLocation
         showsMyLocationButton
       >
+        <UrlTile
+          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maximumZ={19}
+          tileSize={256}
+          flipY={false}
+        />
         {currentLocation && (
           <Marker
             coordinate={{ latitude: currentLocation.lat, longitude: currentLocation.lng }}

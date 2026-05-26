@@ -15,7 +15,7 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ordersApi }     from '@cryptgo/shared';
 import { useDriverStore } from '@/store/useDriverStore';
@@ -156,10 +156,16 @@ export default function ActiveRideScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_DEFAULT}
+        mapType="none"
         initialRegion={{ ...target, latitudeDelta: 0.02, longitudeDelta: 0.02 }}
         showsUserLocation
       >
+        <UrlTile
+          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maximumZ={19}
+          tileSize={256}
+          flipY={false}
+        />
         <Marker coordinate={target} title={targetLabel} pinColor={isPickup ? '#4caf50' : '#f44336'} />
       </MapView>
 

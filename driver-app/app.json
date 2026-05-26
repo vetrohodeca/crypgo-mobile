@@ -29,11 +29,6 @@
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION"
       ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "ТВОЯТ_GOOGLE_MAPS_API_KEY"
-        }
-      }
     },
     "plugins": [
       [
