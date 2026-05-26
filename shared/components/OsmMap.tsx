@@ -3,110 +3,100 @@
  *
  * Не изисква API ключ. Тайловете идват от tile.openstreetmap.org.
  *
- * Props:
- *   center      — { lat, lng } — начален център на картата
- *   zoom        — начален zoom (default 15)
- *   markers     — масив от маркери { lat, lng, label?, color? }
- *   style       — ViewStyle за контейнера
- *   onReady     — извиква се след зареждане на картата
+ * Leaflet JS + CSS са embed-нати директно в HTML (leaflet-bundle.ts) —
+ * не се правят заявки към CDN при стартиране, картата работи дори офлайн
+ * (с изключение на самите map тайлове, за които е нужен интернет).
  */
-import React, { useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useMemo, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
+import type { WebViewErrorEvent, WebViewHttpErrorEvent } from 'react-native-webview';
 import type { ViewStyle } from 'react-native';
+import { LEAFLET_JS, LEAFLET_CSS } from './leaflet-bundle';
 
 export interface OsmMarker {
   lat:    number;
   lng:    number;
   label?: string;
-  color?: string;  // 'red' | 'green' | 'blue' | 'orange' | любой CSS цвят
+  color?: string;
 }
 
 export interface OsmMapRef {
-  /** Премества картата към нови координати */
-  panTo: (lat: number, lng: number, zoom?: number) => void;
-  /** Добавя/обновява маркерите */
+  panTo:      (lat: number, lng: number, zoom?: number) => void;
   setMarkers: (markers: OsmMarker[]) => void;
 }
 
 interface OsmMapProps {
-  center:    { lat: number; lng: number };
-  zoom?:     number;
-  markers?:  OsmMarker[];
-  style?:    ViewStyle;
-  onReady?:  () => void;
+  center:   { lat: number; lng: number };
+  zoom?:    number;
+  markers?: OsmMarker[];
+  style?:   ViewStyle;
+  onReady?: () => void;
 }
 
-function buildHtml(
-  center: { lat: number; lng: number },
-  zoom: number,
-  markers: OsmMarker[],
-): string {
-  const markersJson = JSON.stringify(markers);
-
+// HTML се генерира веднъж с начален център — по-нататък се обновява чрез JS.
+// Leaflet JS и CSS са вградени директно — без нужда от CDN/мрежа при зареждане.
+function buildHtml(center: { lat: number; lng: number }, zoom: number): string {
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <style>${LEAFLET_CSS}</style>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body, #map { width: 100%; height: 100%; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body, #map { width:100%; height:100%; overflow:hidden; }
   </style>
 </head>
 <body>
 <div id="map"></div>
 <script>
-  var map = L.map('map', { zoomControl: true }).setView([${center.lat}, ${center.lng}], ${zoom});
+${LEAFLET_JS}
+</script>
+<script>
+  var map = L.map('map', { zoomControl: true })
+              .setView([${center.lat}, ${center.lng}], ${zoom});
 
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+    attribution: '© OpenStreetMap contributors'
   }).addTo(map);
 
   var markerLayer = L.layerGroup().addTo(map);
 
   function makeIcon(color) {
-    var c = color || 'red';
     return L.divIcon({
       className: '',
-      html: '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:' + c + ';border:2px solid #fff;transform:rotate(-45deg);box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>',
-      iconSize: [22, 22],
-      iconAnchor: [11, 22],
-      popupAnchor: [0, -24],
+      html: '<div style="width:20px;height:20px;border-radius:50% 50% 50% 0;'
+          + 'background:' + (color || '#e74c3c') + ';border:2px solid #fff;'
+          + 'transform:rotate(-45deg);box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>',
+      iconSize:    [20, 20],
+      iconAnchor:  [10, 20],
+      popupAnchor: [0, -22],
     });
   }
 
   function renderMarkers(markers) {
     markerLayer.clearLayers();
-    markers.forEach(function(m) {
+    (markers || []).forEach(function(m) {
       var mk = L.marker([m.lat, m.lng], { icon: makeIcon(m.color) });
       if (m.label) mk.bindPopup(m.label);
       mk.addTo(markerLayer);
     });
   }
 
-  renderMarkers(${markersJson});
-
-  // Bridge: React Native → WebView
-  document.addEventListener('message', handleMsg);
-  window.addEventListener('message', handleMsg);
-  function handleMsg(e) {
+  // Bridge: injectJavaScript → window.dispatchCmd
+  window.dispatchCmd = function(msg) {
     try {
-      var msg = JSON.parse(e.data);
-      if (msg.type === 'panTo') {
-        map.setView([msg.lat, msg.lng], msg.zoom || map.getZoom());
-      } else if (msg.type === 'setMarkers') {
-        renderMarkers(msg.markers);
-      }
-    } catch(err) {}
-  }
+      var d = typeof msg === 'string' ? JSON.parse(msg) : msg;
+      if (d.type === 'panTo')      map.setView([d.lat, d.lng], d.zoom || map.getZoom());
+      if (d.type === 'setMarkers') renderMarkers(d.markers);
+    } catch(e) {}
+  };
 
-  // Notify React Native that the map is ready
+  // Notify React Native that map is ready
   setTimeout(function() {
-    if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage('ready');
+    try { window.ReactNativeWebView.postMessage('ready'); } catch(e) {}
   }, 300);
 </script>
 </body>
@@ -114,25 +104,45 @@ function buildHtml(
 }
 
 const OsmMap = forwardRef<OsmMapRef, OsmMapProps>(function OsmMap(
-  { center, zoom = 15, markers = [], style, onReady },
+  { center, zoom = 14, markers = [], style, onReady },
   ref,
 ) {
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef  = useRef<WebView>(null);
+  const initialZoom = useRef(zoom).current;
+
+  // HTML се строи веднъж — WebView не се рестартира при промяна на props
+  const html = useMemo(
+    () => buildHtml(center, initialZoom),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  // Обновяваме маркерите при промяна (без reload на WebView)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { inject({ type: 'setMarkers', markers }); }, [JSON.stringify(markers)]);
+
+  // Обновяваме центъра при промяна
+  useEffect(() => {
+    inject({ type: 'panTo', lat: center.lat, lng: center.lng, zoom });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [center.lat, center.lng]);
+
+  function inject(cmd: object) {
+    const js = `window.dispatchCmd(${JSON.stringify(cmd)}); true;`;
+    webViewRef.current?.injectJavaScript(js);
+  }
 
   useImperativeHandle(ref, () => ({
-    panTo(lat, lng, z) {
-      webViewRef.current?.injectJavaScript(
-        `handleMsg({data: JSON.stringify({type:'panTo', lat:${lat}, lng:${lng}, zoom:${z ?? zoom}})})`,
-      );
-    },
-    setMarkers(m) {
-      webViewRef.current?.injectJavaScript(
-        `handleMsg({data: JSON.stringify({type:'setMarkers', markers:${JSON.stringify(m)}})})`,
-      );
-    },
+    panTo(lat, lng, z) { inject({ type: 'panTo', lat, lng, zoom: z ?? zoom }); },
+    setMarkers(m)      { inject({ type: 'setMarkers', markers: m }); },
   }));
 
-  const html = buildHtml(center, zoom, markers);
+  const handleError = (e: WebViewErrorEvent) => {
+    console.warn('[OsmMap] WebView error:', e.nativeEvent.description);
+  };
+  const handleHttpError = (e: WebViewHttpErrorEvent) => {
+    console.warn('[OsmMap] HTTP error:', e.nativeEvent.statusCode, e.nativeEvent.url);
+  };
 
   return (
     <View style={[styles.container, style]}>
@@ -144,9 +154,16 @@ const OsmMap = forwardRef<OsmMapRef, OsmMapProps>(function OsmMap(
         javaScriptEnabled
         domStorageEnabled
         onMessage={(e) => {
-          if (e.nativeEvent.data === 'ready') onReady?.();
+          if (e.nativeEvent.data === 'ready') {
+            inject({ type: 'setMarkers', markers });
+            onReady?.();
+          }
         }}
+        onError={handleError}
+        onHttpError={handleHttpError}
         scrollEnabled={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
