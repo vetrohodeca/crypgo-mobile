@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "CrypGo Driver",
+    "slug": "cryptgo-driver",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "cryptgo-driver",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "bg.cryptgo.driver",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "CrypGo Driver използва GPS за да стриймва позицията ви към пътниците.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "CrypGo Driver използва GPS на заден план за да следи активния курс.",
+        "UIBackgroundModes": ["location", "fetch"]
+      }
+    },
+    "android": {
+      "package": "bg.cryptgo.driver",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#1a1a2e"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "CrypGo Driver използва GPS за да изпраща позицията ви в реално време.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      "expo-task-manager"
+    ],
+    "extra": {
+      "apiBaseUrl": "http://10.0.2.2:3000"
+    }
+  }
+}

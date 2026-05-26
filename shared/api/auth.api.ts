@@ -3,6 +3,7 @@ import { apiClient } from './api.client';
 import type {
   LoginDto,
   RegisterPassengerDto,
+  RegisterDriverDto,
   TokenResponse,
   RefreshTokenDto,
 } from '../types';
@@ -18,6 +19,10 @@ export const authApi = {
 
   refresh: (dto: RefreshTokenDto) =>
     apiClient.post<TokenResponse>('/auth/refresh', dto)
+      .then((r: AxiosResponse<TokenResponse>) => r.data),
+
+  registerDriver: (dto: RegisterDriverDto) =>
+    apiClient.post<TokenResponse>('/auth/register/driver', dto)
       .then((r: AxiosResponse<TokenResponse>) => r.data),
 
   logout: () =>
