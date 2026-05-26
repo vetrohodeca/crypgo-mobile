@@ -9,8 +9,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, ScrollView, SafeAreaView,
+  ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ordersApi } from '@cryptgo/shared';
@@ -29,12 +30,16 @@ export default function OrderDetailScreen() {
 
   const [order,    setOrder]    = useState<Order | null>(null);
   const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
 
   useEffect(() => {
     ordersApi.findOne(params.orderId)
       .then(setOrder)
-      .catch(() => Alert.alert('Грешка', 'Поръчката не е намерена.'))
+      .catch((err: any) => {
+        const msg = err?.response?.data?.message ?? 'Поръчката не е намерена или е вече приета.';
+        setError(msg);
+      })
       .finally(() => setLoading(false));
   }, [params.orderId]);
 
@@ -54,8 +59,19 @@ export default function OrderDetailScreen() {
     }
   };
 
-  if (loading || !order) {
+  if (loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color="#1a1a2e" /></View>;
+  }
+
+  if (error || !order) {
+    return (
+      <SafeAreaView style={styles.center}>
+        <Text style={styles.errorText}>{error ?? 'Поръчката не е намерена.'}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+          <Text style={styles.backLink}>← Обратно към поръчките</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
   }
 
   const pickup  = { latitude: Number(order.pickup_lat),  longitude: Number(order.pickup_lng) };
@@ -124,7 +140,9 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 const NAVY = '#1a1a2e';
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: '#fff' },
-  center:       { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  center:       { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  errorText:    { color: '#e74c3c', fontSize: 16, textAlign: 'center', lineHeight: 24 },
+  backLink:     { color: NAVY, fontSize: 15, fontWeight: '600' },
   map:          { height: 220 },
   details:      { padding: 16 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 12 },

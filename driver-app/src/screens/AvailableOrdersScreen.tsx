@@ -7,8 +7,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, SafeAreaView,
+  ActivityIndicator, RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { ordersApi }     from '@cryptgo/shared';
 import { useDriverStore } from '@/store/useDriverStore';

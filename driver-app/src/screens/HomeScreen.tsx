@@ -10,8 +10,9 @@
 import React, { useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  Switch, SafeAreaView, Alert,
+  Switch, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
 import { useLocation }   from '@cryptgo/shared';

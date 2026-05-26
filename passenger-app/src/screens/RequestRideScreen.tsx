@@ -130,6 +130,9 @@ export default function RequestRideScreen() {
         <TextInput
           style={styles.input}
           placeholder="напр. ул. Витоша 1, София"
+          autoCorrect={false}
+          autoComplete="off"
+          autoCapitalize="sentences"
           value={pickup}
           onChangeText={setPickup}
           returnKeyType="next"
@@ -139,6 +142,9 @@ export default function RequestRideScreen() {
         <TextInput
           style={styles.input}
           placeholder="напр. Летище София"
+          autoCorrect={false}
+          autoComplete="off"
+          autoCapitalize="sentences"
           value={dropoff}
           onChangeText={setDropoff}
           returnKeyType="done"

@@ -1,13 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ScrollView, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { authApi }       from '@cryptgo/shared';
 import { useAuthStore }  from '@/store/useAuthStore';
 import { initDriverSocket } from '@/services/backgroundLocation.service';
 import type { AuthNavProp } from '@/navigation/types';
+
+const PHONE_RE = /^(\+?[1-9]\d{6,18}|0\d{9})$/;
+
+function validate(
+  name: string, phone: string, pass: string,
+  confirm: string, car: string, plate: string,
+) {
+  return {
+    name:    name.trim().length < 2        ? 'Имената трябва да са поне 2 символа' : '',
+    phone:   !PHONE_RE.test(phone.trim())  ? 'Невалиден телефонен номер' : '',
+    pass:    pass.length < 8              ? 'Паролата трябва да е поне 8 символа' : '',
+    confirm: confirm !== pass              ? 'Паролите не съвпадат' : '',
+    car:     car.trim().length < 2        ? 'Въведете марка и модел' : '',
+    plate:   plate.trim().length === 0    ? 'Въведете регистрационен номер' : '',
+  };
+}
+
+type Field = 'name' | 'phone' | 'pass' | 'confirm' | 'car' | 'plate';
 
 export default function RegisterScreen() {
   const navigation = useNavigation<AuthNavProp>();
@@ -19,16 +37,18 @@ export default function RegisterScreen() {
   const [confirm, setConfirm] = useState('');
   const [car,     setCar]     = useState('');
   const [plate,   setPlate]   = useState('');
+  const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
   const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState('');
+
+  const errors    = useMemo(() => validate(name, phone, pass, confirm, car, plate), [name, phone, pass, confirm, car, plate]);
+  const canSubmit = Object.values(errors).every((e) => e === '');
+
+  const touch = (field: Field) => setTouched((t) => ({ ...t, [field]: true }));
 
   const handleRegister = async () => {
-    if (!name || !phone || !pass || !car || !plate) {
-      Alert.alert('Грешка', 'Всички полета са задължителни.'); return;
-    }
-    if (pass !== confirm) {
-      Alert.alert('Грешка', 'Паролите не съвпадат.'); return;
-    }
-
+    if (!canSubmit) return;
+    setServerError('');
     setLoading(true);
     try {
       // ln_node_id → генерира се от Breez SDK (DEV: placeholder)
@@ -45,16 +65,33 @@ export default function RegisterScreen() {
       initDriverSocket(resp.access_token);
     } catch (err: any) {
       const msg = err?.response?.data?.message;
-      Alert.alert('Грешка', Array.isArray(msg) ? msg.join('\n') : msg ?? 'Опитайте отново.');
+      setServerError(Array.isArray(msg) ? msg.join('\n') : msg ?? 'Опитайте отново.');
     } finally {
       setLoading(false);
     }
   };
 
-  const F = (label: string, value: string, onChange: (v: string) => void, opts: object = {}) => (
+  const Field = (
+    field: Field,
+    label: string,
+    value: string,
+    onChange: (v: string) => void,
+    opts: object = {},
+  ) => (
     <>
       <Text style={styles.label}>{label}</Text>
-      <TextInput style={styles.input} value={value} onChangeText={onChange} {...opts} />
+      <TextInput
+        style={[styles.input, touched[field] && errors[field] ? styles.inputError : null]}
+        autoCorrect={false}
+        autoComplete="off"
+        value={value}
+        onChangeText={(v) => { onChange(v); touch(field); setServerError(''); }}
+        onBlur={() => touch(field)}
+        {...opts}
+      />
+      {touched[field] && errors[field] ? (
+        <Text style={styles.fieldError}>{errors[field]}</Text>
+      ) : null}
     </>
   );
 
@@ -64,20 +101,27 @@ export default function RegisterScreen() {
         <Text style={styles.logo}>🚕 CrypGo Driver</Text>
         <Text style={styles.title}>Регистрация</Text>
 
-        {F('Имена', name, setName)}
-        {F('Телефон', phone, setPhone, { keyboardType: 'phone-pad' })}
-        {F('Парола (мин. 8)', pass, setPass, { secureTextEntry: true })}
-        {F('Потвърди парола', confirm, setConfirm, { secureTextEntry: true })}
-        {F('Марка и модел кола', car, setCar, { placeholder: 'напр. Toyota Corolla 2020' })}
-        {F('Регистрационен номер', plate, setPlate, { placeholder: 'напр. СА1234АВ', autoCapitalize: 'characters' })}
+        {Field('name',    'Имена',                   name,    setName,    { autoCapitalize: 'words' })}
+        {Field('phone',   'Телефон',                 phone,   setPhone,   { keyboardType: 'phone-pad', placeholder: '+359888123456 или 0888123456', autoComplete: 'tel' })}
+        {Field('pass',    'Парола (мин. 8 символа)', pass,    setPass,    { secureTextEntry: true, autoCapitalize: 'none' })}
+        {Field('confirm', 'Потвърди парола',          confirm, setConfirm, { secureTextEntry: true, autoCapitalize: 'none' })}
+        {Field('car',     'Марка и модел кола',       car,     setCar,     { placeholder: 'напр. Toyota Corolla 2020', autoCapitalize: 'words' })}
+        {Field('plate',   'Регистрационен номер',     plate,   setPlate,   { placeholder: 'напр. СА1234АВ', autoCapitalize: 'none' })}
 
         <Text style={styles.note}>
           ℹ️ Акаунтът изисква одобрение от администратор преди да можете да приемате поръчки.
         </Text>
 
-        <TouchableOpacity style={styles.btn} onPress={handleRegister} disabled={loading}>
+        {serverError ? <Text style={styles.serverError}>{serverError}</Text> : null}
+
+        <TouchableOpacity
+          style={[styles.btn, (!canSubmit || loading) && styles.btnDisabled]}
+          onPress={handleRegister}
+          disabled={!canSubmit || loading}
+        >
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Създай акаунт</Text>}
         </TouchableOpacity>
+
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.link}>← Обратно към вход</Text>
         </TouchableOpacity>
@@ -92,9 +136,15 @@ const styles = StyleSheet.create({
   logo:  { fontSize: 32, fontWeight: 'bold', color: NAVY, textAlign: 'center', marginTop: 16 },
   title: { fontSize: 18, color: '#333', textAlign: 'center', marginBottom: 20 },
   label: { fontSize: 13, color: '#666', marginBottom: 4, marginTop: 8 },
+
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 12, padding: 14, fontSize: 15 },
-  note:  { fontSize: 13, color: '#888', textAlign: 'center', marginVertical: 16, lineHeight: 20 },
-  btn:   { backgroundColor: NAVY, borderRadius: 12, padding: 16, alignItems: 'center' },
+  inputError:  { borderColor: '#e74c3c' },
+  fieldError:  { color: '#e74c3c', fontSize: 12, marginTop: 4, marginBottom: 4, paddingLeft: 4 },
+  serverError: { color: '#e74c3c', fontSize: 13, textAlign: 'center', marginVertical: 8 },
+
+  note: { fontSize: 13, color: '#888', textAlign: 'center', marginVertical: 16, lineHeight: 20 },
+  btn:  { backgroundColor: NAVY, borderRadius: 12, padding: 16, alignItems: 'center' },
+  btnDisabled: { backgroundColor: '#8a8aa0' },
   btnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   link:    { color: NAVY, textAlign: 'center', marginTop: 16, fontSize: 14 },
 });

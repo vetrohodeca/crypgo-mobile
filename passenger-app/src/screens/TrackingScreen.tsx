@@ -1,17 +1,21 @@
 /**
  * TrackingScreen — Real-time проследяване на шофьора.
  *
- * Свързва WebSocket и показва:
- *   - Карта с позицията на шофьора (актуализира се на ~3с)
- *   - Статус на поръчката
- *   - При geofencing trigger (order:arrived) → пита за preimage reveal
+ * Polling на статуса на поръчката на всеки 3с.
+ * WebSocket за GPS позицията на шофьора и geofencing trigger (order:arrived).
+ *
+ * Фази:
+ *   ACCEPTED    → шофьорът идва за пътника, бутонът не се показва
+ *   IN_PROGRESS → курсът е в ход, бутонът "Потвърди пристигане" е видим
+ *   COMPLETED   → плащането е освободено, навигация към начало
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, Alert, TouchableOpacity,
-  ActivityIndicator, SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ordersApi } from '@cryptgo/shared';
 import { useWebSocket } from '@cryptgo/shared';
@@ -32,34 +36,63 @@ export default function TrackingScreen() {
   const setCurrentOrder = useOrderStore((s) => s.setCurrentOrder);
   const clearOrder      = useOrderStore((s) => s.clear);
 
-  const [driverPos, setDriverPos] = useState<DriverPosition | null>(null);
-  const [completing, setCompleting] = useState(false);
-  const [arrived, setArrived]       = useState(false);
-  const mapRef = useRef<MapView>(null);
+  const [driverPos,   setDriverPos]   = useState<DriverPosition | null>(null);
+  const [completing,  setCompleting]  = useState(false);
+  const [geofenceHit, setGeofenceHit] = useState(false); // WebSocket geofencing trigger
+  const mapRef       = useRef<MapView>(null);
+  const mountedRef   = useRef(true);
 
-  // WebSocket — слушаме позицията на шофьора и geofencing trigger
+  // ── Polling — статус на поръчката (всеки 3с) ─────────────────────
+  useEffect(() => {
+    mountedRef.current = true;
+
+    const fetchOrder = async () => {
+      try {
+        const o = await ordersApi.findOne(params.orderId);
+        if (!mountedRef.current) return;
+        setCurrentOrder(o);
+
+        if (o.status === 'COMPLETED') {
+          clearInterval(intervalId);
+          Alert.alert(
+            '✅ Курсът приключи',
+            'Плащането е освободено към шофьора. Благодарим!',
+            [{ text: 'OK', onPress: () => { clearOrder(); navigation.navigate('Tabs'); } }],
+          );
+        }
+        if (o.status === 'CANCELED') {
+          clearInterval(intervalId);
+          Alert.alert('Поръчката е анулирана', '', [
+            { text: 'OK', onPress: () => { clearOrder(); navigation.navigate('Tabs'); } },
+          ]);
+        }
+      } catch { /* тихо — не прекъсваме polling при временна мрежова грешка */ }
+    };
+
+    fetchOrder();
+    const intervalId = setInterval(fetchOrder, 3_000);
+    return () => {
+      mountedRef.current = false;
+      clearInterval(intervalId);
+    };
+  }, [params.orderId]);
+
+  // ── WebSocket — GPS позиция на шофьора + geofencing ──────────────
   const { connected, joinOrder, leaveOrder } = useWebSocket({
     token: accessToken,
-    onDriverLocation: (data) => {
+    onDriverLocation: useCallback((data) => {
       setDriverPos({ lat: data.lat, lng: data.lng });
-      // Центрираме картата
       mapRef.current?.animateToRegion({
-        latitude:       data.lat,
-        longitude:      data.lng,
-        latitudeDelta:  0.01,
-        longitudeDelta: 0.01,
+        latitude: data.lat, longitude: data.lng,
+        latitudeDelta: 0.01, longitudeDelta: 0.01,
       }, 500);
-    },
-    onOrderArrived: (data) => {
+    }, []),
+    onOrderArrived: useCallback((data) => {
       if (data.orderId === params.orderId) {
-        setArrived(true);
-        Alert.alert(
-          '🏁 Пристигнахте!',
-          'Шофьорът е на дестинацията. Потвърдете завършването.',
-          [{ text: 'Потвърди', onPress: handleComplete }],
-        );
+        setGeofenceHit(true); // бутонът вече е видим при IN_PROGRESS — само подчертаваме
+        Alert.alert('🏁 Пристигнахте!', 'Шофьорът е на дестинацията. Потвърдете завършването.');
       }
-    },
+    }, [params.orderId]),
   });
 
   useEffect(() => {
@@ -68,15 +101,14 @@ export default function TrackingScreen() {
   }, [params.orderId]);
 
   // ── Завършване — разкриване на preimage ──────────────────────────
-
   const handleComplete = async () => {
     if (!pendingInvoice?.preimage) {
-      Alert.alert('Грешка', 'Preimage не е наличен.');
+      Alert.alert('Грешка', 'Preimage не е наличен. Рестартирайте приложението.');
       return;
     }
     setCompleting(true);
     try {
-      // СИГУРНОСТ: preimage-ът се изпраща САМО при завършване
+      // СИГУРНОСТ: preimage-ът се изпраща САМО при завършване на курса
       const completed = await ordersApi.complete(params.orderId, {
         preimage: pendingInvoice.preimage,
       });
@@ -93,15 +125,17 @@ export default function TrackingScreen() {
     }
   };
 
+  const orderStatus = currentOrder?.status ?? 'ACCEPTED';
+  const isInProgress = orderStatus === 'IN_PROGRESS';
+
   const statusLabels: Record<string, string> = {
     HELD:        'Чакаме шофьор...',
-    ACCEPTED:    'Шофьорът идва',
-    IN_PROGRESS: 'Курсът е в ход',
-    COMPLETED:   'Завършен',
-    CANCELED:    'Анулиран',
+    ACCEPTED:    '🚗 Шофьорът идва за вас',
+    IN_PROGRESS: '🛣 Курсът е в ход',
+    COMPLETED:   '✅ Завършен',
+    CANCELED:    '❌ Анулиран',
   };
 
-  const orderStatus = currentOrder?.status ?? 'ACCEPTED';
   const dropoff = currentOrder
     ? { latitude: Number(currentOrder.dropoff_lat), longitude: Number(currentOrder.dropoff_lng) }
     : null;
@@ -109,7 +143,7 @@ export default function TrackingScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Status bar */}
-      <View style={styles.statusBar}>
+      <View style={[styles.statusBar, isInProgress && styles.statusBarActive]}>
         <View style={[styles.dot, connected ? styles.dotGreen : styles.dotRed]} />
         <Text style={styles.statusLabel}>{statusLabels[orderStatus] ?? orderStatus}</Text>
       </View>
@@ -127,10 +161,7 @@ export default function TrackingScreen() {
         }}
       >
         {driverPos && (
-          <Marker
-            coordinate={{ latitude: driverPos.lat, longitude: driverPos.lng }}
-            title="Шофьор"
-          >
+          <Marker coordinate={{ latitude: driverPos.lat, longitude: driverPos.lng }} title="Шофьор">
             <Text style={{ fontSize: 26 }}>🚕</Text>
           </Marker>
         )}
@@ -142,22 +173,35 @@ export default function TrackingScreen() {
       {/* Bottom panel */}
       <View style={styles.panel}>
         <Text style={styles.address} numberOfLines={1}>
-          📍 {currentOrder?.dropoff_address ?? '—'}
+          🏁 {currentOrder?.dropoff_address ?? '—'}
         </Text>
         <Text style={styles.price}>
           {currentOrder ? `${parseFloat(currentOrder.price_eur).toFixed(2)} EUR` : '—'}
         </Text>
 
-        {arrived && !completing && (
-          <TouchableOpacity style={styles.completeBtn} onPress={handleComplete}>
+        {/* Бутонът е видим щом шофьорът е стартирал курса (IN_PROGRESS) */}
+        {isInProgress && !completing && (
+          <TouchableOpacity
+            style={[styles.completeBtn, geofenceHit && styles.completeBtnPulse]}
+            onPress={handleComplete}
+          >
             <Text style={styles.completeBtnText}>🏁 Потвърди пристигането</Text>
           </TouchableOpacity>
         )}
-        {completing && <ActivityIndicator color="#F7931A" style={{ marginTop: 8 }} />}
 
-        {!arrived && (
+        {completing && (
+          <View style={styles.completingRow}>
+            <ActivityIndicator color="#F7931A" />
+            <Text style={styles.completingText}>  Освобождаване на плащането...</Text>
+          </View>
+        )}
+
+        {/* Хинт докато шофьорът не е стартирал */}
+        {!isInProgress && (
           <Text style={styles.hint}>
-            Освобождаването на плащането ще се задейства автоматично при пристигане.
+            {orderStatus === 'ACCEPTED'
+              ? 'Шофьорът се придвижва към вас. Бутонът за потвърждение ще се появи при тръгване.'
+              : 'Освобождаването на плащането ще се задейства при пристигане.'}
           </Text>
         )}
       </View>
@@ -166,26 +210,37 @@ export default function TrackingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container:  { flex: 1, backgroundColor: '#fff' },
+
   statusBar: {
     flexDirection: 'row', alignItems: 'center',
     padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
   },
-  dot:       { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-  dotGreen:  { backgroundColor: '#4caf50' },
-  dotRed:    { backgroundColor: '#f44336' },
+  statusBarActive: { backgroundColor: '#fff8f0' },
+  dot:      { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+  dotGreen: { backgroundColor: '#4caf50' },
+  dotRed:   { backgroundColor: '#f44336' },
   statusLabel: { fontSize: 15, fontWeight: '600', color: '#333' },
-  map:         { flex: 1 },
+
+  map: { flex: 1 },
+
   panel: {
     padding: 16, backgroundColor: '#fff',
     borderTopWidth: 1, borderTopColor: '#f0f0f0',
   },
-  address:     { fontSize: 14, color: '#666', marginBottom: 4 },
-  price:       { fontSize: 22, fontWeight: 'bold', color: '#F7931A', marginBottom: 12 },
+  address: { fontSize: 14, color: '#666', marginBottom: 4 },
+  price:   { fontSize: 22, fontWeight: 'bold', color: '#F7931A', marginBottom: 12 },
+
   completeBtn: {
     backgroundColor: '#4caf50', borderRadius: 14,
     padding: 16, alignItems: 'center',
   },
-  completeBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  hint: { textAlign: 'center', color: '#999', fontSize: 12 },
+  completeBtnPulse: { backgroundColor: '#2e7d32' }, // по-тъмно когато geofencing потвърди
+  completeBtnText:  { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+
+  completingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12 },
+  completingText: { color: '#666', fontSize: 14 },
+
+  hint: { textAlign: 'center', color: '#999', fontSize: 12, lineHeight: 18 },
 });

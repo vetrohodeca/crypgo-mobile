@@ -2,20 +2,21 @@
  * HomeScreen — Главен екран за пътника.
  *
  * Показва:
- *   - Карта (MapView) с текущата позиция на пътника
+ *   - Карта (MapView) на цял екран с текущата позиция на пътника
  *   - Маркер на най-близкия свободен шофьор (GEORADIUS)
  *   - Бутон "Заяви курс" → RequestRideScreen
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
 import { locationApi } from '@cryptgo/shared';
 import type { NearestDriverResult } from '@cryptgo/shared';
-import { useLocation } from '@cryptgo/shared';
+import { useLocation }   from '@cryptgo/shared';
 import { useAuthStore }  from '@/store/useAuthStore';
 import { useOrderStore } from '@/store/useOrderStore';
 import type { AppNavProp } from '@/navigation/types';
@@ -23,17 +24,15 @@ import type { AppNavProp } from '@/navigation/types';
 const SOFIA = { latitude: 42.6977, longitude: 23.3219 };
 
 export default function HomeScreen() {
-  const navigation    = useNavigation<AppNavProp>();
-  const logout        = useAuthStore((s) => s.logout);
-  const user          = useAuthStore((s) => s.user);
-  const currentOrder  = useOrderStore((s) => s.currentOrder);
+  const navigation   = useNavigation<AppNavProp>();
+  const logout       = useAuthStore((s) => s.logout);
+  const currentOrder = useOrderStore((s) => s.currentOrder);
 
   const [nearestDriver, setNearestDriver] = useState<NearestDriverResult | null>(null);
   const [loadingDriver, setLoadingDriver] = useState(false);
 
   const { currentLocation, hasPermission, requestPermission, getCurrentPosition } = useLocation();
 
-  // Заявяме разрешения и взимаме начална позиция
   useEffect(() => {
     (async () => {
       const granted = await requestPermission();
@@ -41,7 +40,6 @@ export default function HomeScreen() {
     })();
   }, []);
 
-  // Търсим най-близкия шофьор на всеки 10с
   const fetchNearestDriver = useCallback(async () => {
     if (!currentLocation) return;
     setLoadingDriver(true);
@@ -52,7 +50,7 @@ export default function HomeScreen() {
       );
       setNearestDriver(driver);
     } catch {
-      // Тихо — няма наличен шофьор
+      // тихо — няма наличен шофьор
     } finally {
       setLoadingDriver(false);
     }
@@ -60,11 +58,10 @@ export default function HomeScreen() {
 
   useEffect(() => {
     fetchNearestDriver();
-    const interval = setInterval(fetchNearestDriver, 10_000);
-    return () => clearInterval(interval);
+    const id = setInterval(fetchNearestDriver, 10_000);
+    return () => clearInterval(id);
   }, [fetchNearestDriver]);
 
-  // Ако има активна поръчка в IN_PROGRESS — директно към Tracking
   useEffect(() => {
     if (currentOrder?.status === 'IN_PROGRESS' || currentOrder?.status === 'ACCEPTED') {
       navigation.navigate('Tracking', { orderId: currentOrder.id });
@@ -75,27 +72,14 @@ export default function HomeScreen() {
   }, [currentOrder]);
 
   const mapRegion = currentLocation
-    ? {
-        latitude:       currentLocation.lat,
-        longitude:      currentLocation.lng,
-        latitudeDelta:  0.02,
-        longitudeDelta: 0.02,
-      }
+    ? { latitude: currentLocation.lat, longitude: currentLocation.lng, latitudeDelta: 0.02, longitudeDelta: 0.02 }
     : { ...SOFIA, latitudeDelta: 0.05, longitudeDelta: 0.05 };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Здравей, {user?.name?.split(' ')[0]} ₿</Text>
-        <TouchableOpacity onPress={logout}>
-          <Text style={styles.logoutText}>Изход</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Map */}
+    <View style={styles.container}>
+      {/* Map — full screen */}
       <MapView
-        style={styles.map}
+        style={StyleSheet.absoluteFillObject}
         provider={PROVIDER_DEFAULT}
         region={mapRegion}
         showsUserLocation
@@ -103,10 +87,7 @@ export default function HomeScreen() {
       >
         {nearestDriver && (
           <Marker
-            coordinate={{
-              latitude:  nearestDriver.lat,
-              longitude: nearestDriver.lng,
-            }}
+            coordinate={{ latitude: nearestDriver.lat, longitude: nearestDriver.lng }}
             title="Свободен шофьор"
             description={`${nearestDriver.distanceKm.toFixed(2)} км от вас`}
           >
@@ -114,6 +95,13 @@ export default function HomeScreen() {
           </Marker>
         )}
       </MapView>
+
+      {/* Logout — floating top-right */}
+      <SafeAreaView style={styles.topBar} pointerEvents="box-none">
+        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+          <Text style={styles.logoutText}>Изход</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
 
       {/* Bottom panel */}
       <View style={styles.panel}>
@@ -136,29 +124,39 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {!hasPermission && (
-          <Text style={styles.permText}>
-            Нужен е достъп до GPS за да заявите курс.
-          </Text>
+          <Text style={styles.permText}>Нужен е достъп до GPS за да заявите курс.</Text>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
-  },
-  greeting:    { fontSize: 18, fontWeight: '600', color: '#333' },
-  logoutText:  { color: '#F7931A', fontSize: 14 },
-  map:         { flex: 1 },
+  container:   { flex: 1 },
   driverEmoji: { fontSize: 28 },
+
+  // Floating logout button
+  topBar: {
+    position: 'absolute', top: 0, right: 0, left: 0,
+    flexDirection: 'row', justifyContent: 'flex-end',
+    paddingHorizontal: 16, paddingTop: 8,
+  },
+  logoutBtn: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
+    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 4,
+    elevation: 3,
+  },
+  logoutText: { color: '#F7931A', fontWeight: '600', fontSize: 14 },
+
+  // Bottom panel
   panel: {
-    padding: 16, backgroundColor: '#fff',
-    borderTopWidth: 1, borderTopColor: '#f0f0f0',
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8,
+    elevation: 8,
   },
   driverInfo: { textAlign: 'center', color: '#333', marginBottom: 12, fontSize: 15 },
   noDriver:   { textAlign: 'center', color: '#999', marginBottom: 12, fontSize: 14 },

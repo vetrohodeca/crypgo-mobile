@@ -1,12 +1,19 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet,
-  ActivityIndicator, RefreshControl, SafeAreaView,
+  ActivityIndicator, RefreshControl, TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { ordersApi } from '@cryptgo/shared';
 import type { Order } from '@cryptgo/shared';
+import type { AppNavProp } from '@/navigation/types';
+
+const ACTIVE_STATUSES = new Set(['ACCEPTED', 'IN_PROGRESS']);
 
 export default function EarningsScreen() {
+  const navigation = useNavigation<AppNavProp>();
+
   const [orders,     setOrders]     = useState<Order[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,17 +49,38 @@ export default function EarningsScreen() {
         ListEmptyComponent={<Text style={styles.empty}>Нямате курсове още.</Text>}
         renderItem={({ item: order }) => {
           const STATUS: Record<string, string> = {
-            COMPLETED: '✅ Завършен', CANCELED: '❌ Анулиран',
-            ACCEPTED: '🚕 Приет', IN_PROGRESS: '🚗 В ход', HELD: '🔒 Чака', CREATED: '⏳',
+            COMPLETED:   '✅ Завършен',
+            CANCELED:    '❌ Анулиран',
+            ACCEPTED:    '🚕 Приет',
+            IN_PROGRESS: '🚗 В ход',
+            HELD:        '🔒 Чака',
+            CREATED:     '⏳',
           };
           const COLOR: Record<string, string> = {
-            COMPLETED: '#4caf50', CANCELED: '#f44336',
-            ACCEPTED: '#9c27b0', IN_PROGRESS: '#2196f3', HELD: '#ff9800', CREATED: '#999',
+            COMPLETED:   '#4caf50',
+            CANCELED:    '#f44336',
+            ACCEPTED:    '#9c27b0',
+            IN_PROGRESS: '#2196f3',
+            HELD:        '#ff9800',
+            CREATED:     '#999',
           };
+
+          const isActive = ACTIVE_STATUSES.has(order.status);
+
           return (
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={[styles.card, isActive && styles.cardActive]}
+              activeOpacity={isActive ? 0.7 : 1}
+              onPress={() => {
+                if (isActive) {
+                  navigation.navigate('ActiveRide', { orderId: order.id });
+                }
+              }}
+            >
               <View style={styles.cardRow}>
-                <Text style={styles.date}>{new Date(order.created_at).toLocaleDateString('bg-BG')}</Text>
+                <Text style={styles.date}>
+                  {new Date(order.created_at).toLocaleDateString('bg-BG')}
+                </Text>
                 <Text style={[styles.status, { color: COLOR[order.status] ?? '#333' }]}>
                   {STATUS[order.status] ?? order.status}
                 </Text>
@@ -64,8 +92,11 @@ export default function EarningsScreen() {
                 {order.status === 'COMPLETED' && (
                   <Text style={styles.earn}>+{parseFloat(order.price_eur).toFixed(2)} EUR</Text>
                 )}
+                {isActive && (
+                  <Text style={styles.tapHint}>Натисни за да продължиш →</Text>
+                )}
               </View>
-            </View>
+            </TouchableOpacity>
           );
         }}
       />
@@ -83,10 +114,14 @@ const styles = StyleSheet.create({
   summaryLabel:  { color: '#aaa', fontSize: 14, marginBottom: 4 },
   summaryAmount: { color: '#fff', fontSize: 36, fontWeight: 'bold' },
   summaryCount:  { color: '#aaa', fontSize: 13, marginTop: 4 },
-  empty:   { textAlign: 'center', color: '#999', marginTop: 40, fontSize: 15 },
+  empty: { textAlign: 'center', color: '#999', marginTop: 40, fontSize: 15 },
+
   card: {
     margin: 12, borderRadius: 14, backgroundColor: '#fafafa',
     padding: 14, borderWidth: 1, borderColor: '#f0f0f0',
+  },
+  cardActive: {
+    borderColor: '#2196f3', backgroundColor: '#f0f7ff', borderWidth: 1.5,
   },
   cardRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   date:    { fontSize: 13, color: '#999' },
@@ -94,4 +129,5 @@ const styles = StyleSheet.create({
   addr:    { fontSize: 14, color: '#555', marginBottom: 4 },
   km:      { fontSize: 13, color: '#888' },
   earn:    { fontSize: 15, fontWeight: 'bold', color: '#4caf50' },
+  tapHint: { fontSize: 12, color: '#2196f3', fontStyle: 'italic' },
 });

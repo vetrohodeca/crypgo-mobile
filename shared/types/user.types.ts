@@ -20,6 +20,8 @@ export interface RegisterPassengerDto {
 export interface LoginDto {
   phone: string;
   password: string;
+  /** Pass 'driver' from the driver app so phones registered as both roles log in as driver. */
+  role?: 'passenger' | 'driver';
 }
 
 export interface TokenResponse {
