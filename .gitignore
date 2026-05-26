@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+passenger-app/node_modules/
+driver-app/node_modules/
+
+# Expo
+passenger-app/.expo/
+driver-app/.expo/
+passenger-app/dist/
+driver-app/dist/
+
+# Native builds
+passenger-app/android/
+passenger-app/ios/
+driver-app/android/
+driver-app/ios/
+
+# Locks — само root lock се пази
+passenger-app/package-lock.json
+driver-app/package-lock.json
+
+# Misc
+.DS_Store
+*.log

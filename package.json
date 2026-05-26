@@ -1,0 +1,14 @@
+{
+  "name": "cryptgo-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CrypGo Mobile — shared dependency root",
+  "devDependencies": {
+    "axios": "^1.16.1",
+    "expo-crypto": "~56.0.3",
+    "expo-location": "~56.0.13",
+    "react": "19.2.3",
+    "socket.io-client": "^4.8.3",
+    "@types/react": "~19.2.2"
+  }
+}

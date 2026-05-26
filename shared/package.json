@@ -1,0 +1,14 @@
+{
+  "name": "@cryptgo/shared",
+  "version": "1.0.0",
+  "description": "CrypGo shared types, API client and hooks",
+  "private": true,
+  "main": "index.ts",
+  "types": "index.ts",
+  "peerDependencies": {
+    "axios": "^1.x",
+    "expo-location": "^18.x",
+    "react": "^18.x",
+    "socket.io-client": "^4.x"
+  }
+}
