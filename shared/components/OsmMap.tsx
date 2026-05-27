@@ -38,6 +38,11 @@ interface OsmMapProps {
    * it is disabled and greyed out until a real position arrives.
    */
   locatePosition?: { lat: number; lng: number } | null;
+  /**
+   * Fires on every Leaflet "moveend" event (drag end / pan end / zoom end).
+   * Use this in map-picker screens to reverse-geocode the new centre.
+   */
+  onCenterChange?: (lat: number, lng: number) => void;
 }
 
 // HTML is built once with the initial centre — afterwards updated via JS.
@@ -104,13 +109,25 @@ ${LEAFLET_JS}
   setTimeout(function() {
     try { window.ReactNativeWebView.postMessage('ready'); } catch(e) {}
   }, 300);
+
+  // Emit map centre on every moveend — used by MapPickerScreen for reverse geocoding.
+  // All OsmMap instances emit this; the React Native side calls onCenterChange only
+  // when the prop is provided, so there is no overhead for screens that don't need it.
+  map.on('moveend', function() {
+    var c = map.getCenter();
+    try {
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify({ type: 'centerChanged', lat: c.lat, lng: c.lng })
+      );
+    } catch(e) {}
+  });
 </script>
 </body>
 </html>`;
 }
 
 const OsmMap = forwardRef<OsmMapRef, OsmMapProps>(function OsmMap(
-  { center, zoom = 14, markers = [], style, onReady, locatePosition },
+  { center, zoom = 14, markers = [], style, onReady, locatePosition, onCenterChange },
   ref,
 ) {
   const webViewRef  = useRef<WebView>(null);
@@ -160,9 +177,18 @@ const OsmMap = forwardRef<OsmMapRef, OsmMapProps>(function OsmMap(
         javaScriptEnabled
         domStorageEnabled
         onMessage={(e) => {
-          if (e.nativeEvent.data === 'ready') {
+          const raw = e.nativeEvent.data;
+          if (raw === 'ready') {
             inject({ type: 'setMarkers', markers });
             onReady?.();
+            return;
+          }
+          // JSON messages from Leaflet (e.g. centerChanged from moveend)
+          try {
+            const msg = JSON.parse(raw) as { type: string; lat: number; lng: number };
+            if (msg.type === 'centerChanged') onCenterChange?.(msg.lat, msg.lng);
+          } catch {
+            // not a JSON message — ignore
           }
         }}
         onError={handleError}

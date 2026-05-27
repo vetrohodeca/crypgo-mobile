@@ -2,6 +2,8 @@
  * RequestRideScreen — Request a ride.
  *
  * The passenger enters pickup and dropoff addresses.
+ * Each field has a 📍 button that opens MapPickerScreen so the passenger
+ * can pick the address visually by dragging the map.
  * Backend geocodes -> calculates route -> returns price.
  * After confirmation -> generatePreimage -> initiatePayment -> PaymentScreen.
  *
@@ -9,30 +11,70 @@
  *   - Scrollable content area (title + inputs / route details)
  *   - Fixed bottom panel with the action button (never hidden by keyboard or dropdowns)
  */
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { ordersApi } from '@cryptgo/shared';
 import { generatePreimage } from '@/services/breez.service';
 import { savePreimage }    from '@/services/preimageService';
 import { useOrderStore }    from '@/store/useOrderStore';
 import { useLocation }      from '@cryptgo/shared';
-import type { AppNavProp }  from '@/navigation/types';
+import type { AppNavProp, RequestRideRouteProp } from '@/navigation/types';
 
 export default function RequestRideScreen() {
   const navigation           = useNavigation<AppNavProp>();
+  const route                = useRoute<RequestRideRouteProp>();
   const setPaymentInitiated  = useOrderStore((s) => s.setPaymentInitiated);
   const { currentLocation }  = useLocation();
 
-  const [pickup,    setPickup]   = useState('');
-  const [dropoff,   setDropoff]  = useState('');
-  const [order,     setOrder]    = useState<any>(null); // preview after createOrder
-  const [step,      setStep]     = useState<'input' | 'confirm' | 'paying'>('input');
-  const [loading,   setLoading]  = useState(false);
+  const [pickup,        setPickup]        = useState('');
+  const [dropoff,       setDropoff]       = useState('');
+  const [pickupCoords,  setPickupCoords]  = useState<{ lat: number; lng: number } | null>(null);
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [order,         setOrder]         = useState<any>(null); // preview after createOrder
+  const [step,          setStep]          = useState<'input' | 'confirm' | 'paying'>('input');
+  const [loading,       setLoading]       = useState(false);
+
+  // Track the last picked value so we don't re-apply it on every re-render
+  const lastPickedKeyRef = useRef<string | null>(null);
+
+  // When the user returns from MapPickerScreen with a chosen address,
+  // route.params.picked is set — apply it exactly once per unique pick.
+  useEffect(() => {
+    const picked = route.params?.picked;
+    if (!picked) return;
+
+    const key = `${picked.field}:${picked.lat.toFixed(6)}:${picked.lng.toFixed(6)}`;
+    if (lastPickedKeyRef.current === key) return;
+    lastPickedKeyRef.current = key;
+
+    if (picked.field === 'pickup') {
+      setPickup(picked.address);
+      setPickupCoords({ lat: picked.lat, lng: picked.lng });
+    } else {
+      setDropoff(picked.address);
+      setDropoffCoords({ lat: picked.lat, lng: picked.lng });
+    }
+  }, [route.params?.picked]);
+
+  // ── Open the full-screen map picker for a given field ────────────
+  const openMapPicker = (field: 'pickup' | 'dropoff') => {
+    // For pickup, start the map at the current GPS position if available.
+    // For dropoff, start at existing dropoff coords (if any) or GPS position.
+    const coords =
+      field === 'pickup'
+        ? (pickupCoords ?? currentLocation ?? undefined)
+        : (dropoffCoords ?? currentLocation ?? undefined);
+
+    navigation.navigate('MapPicker', {
+      field,
+      ...(coords ? { initialCoords: coords } : {}),
+    });
+  };
 
   // Step 1: Request to backend (geocoding + price)
 
@@ -46,9 +88,14 @@ export default function RequestRideScreen() {
       const created = await ordersApi.create({
         pickup_address:  pickup.trim(),
         dropoff_address: dropoff.trim(),
-        // If GPS is available — pass coordinates directly (no geocoding)
-        ...(currentLocation
+        // Pass coordinates to skip geocoding when addresses came from the map picker
+        ...(pickupCoords
+          ? { pickup_lat: pickupCoords.lat, pickup_lng: pickupCoords.lng }
+          : currentLocation
           ? { pickup_lat: currentLocation.lat, pickup_lng: currentLocation.lng }
+          : {}),
+        ...(dropoffCoords
+          ? { dropoff_lat: dropoffCoords.lat, dropoff_lng: dropoffCoords.lng }
           : {}),
       });
       setOrder(created);
@@ -148,30 +195,50 @@ export default function RequestRideScreen() {
         >
           <Text style={styles.title}>Заяви курс</Text>
 
+          {/* Pickup field */}
           <Text style={styles.label}>Начален адрес</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="напр. ул. Витоша 1, София"
-            autoCorrect={false}
-            autoComplete="off"
-            autoCapitalize="none"
-            value={pickup}
-            onChangeText={setPickup}
-            returnKeyType="next"
-          />
+          <View style={styles.inputRow}>
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="напр. ул. Витоша 1, София"
+              autoCorrect={false}
+              autoComplete="off"
+              autoCapitalize="none"
+              value={pickup}
+              onChangeText={(t) => { setPickup(t); setPickupCoords(null); }}
+              returnKeyType="next"
+            />
+            <TouchableOpacity
+              style={styles.mapBtn}
+              onPress={() => openMapPicker('pickup')}
+              accessibilityLabel="Избери начален адрес от карта"
+            >
+              <Text style={styles.mapBtnText}>📍</Text>
+            </TouchableOpacity>
+          </View>
 
+          {/* Dropoff field */}
           <Text style={styles.label}>Краен адрес</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="напр. Летище София"
-            autoCorrect={false}
-            autoComplete="off"
-            autoCapitalize="none"
-            value={dropoff}
-            onChangeText={setDropoff}
-            returnKeyType="done"
-            onSubmitEditing={handleCalculate}
-          />
+          <View style={styles.inputRow}>
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="напр. Летище София"
+              autoCorrect={false}
+              autoComplete="off"
+              autoCapitalize="none"
+              value={dropoff}
+              onChangeText={(t) => { setDropoff(t); setDropoffCoords(null); }}
+              returnKeyType="done"
+              onSubmitEditing={handleCalculate}
+            />
+            <TouchableOpacity
+              style={styles.mapBtn}
+              onPress={() => openMapPicker('dropoff')}
+              accessibilityLabel="Избери краен адрес от карта"
+            >
+              <Text style={styles.mapBtnText}>📍</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
 
         {/* Fixed bottom panel — stays above the keyboard */}
@@ -206,10 +273,28 @@ const styles = StyleSheet.create({
 
   title: { fontSize: 22, fontWeight: 'bold', color: '#333', marginBottom: 20 },
   label: { fontSize: 14, color: '#666', marginBottom: 4 },
+
+  // Input row: text field + map-picker button side by side
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   input: {
     borderWidth: 1, borderColor: '#ddd', borderRadius: 12,
-    padding: 14, marginBottom: 16, fontSize: 16,
+    padding: 14, fontSize: 16,
   },
+  mapBtn: {
+    marginLeft: 8,
+    backgroundColor: '#fff5eb',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F7931A',
+    padding: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapBtnText: { fontSize: 20 },
 
   card: {
     backgroundColor: '#f9f9f9', borderRadius: 16,

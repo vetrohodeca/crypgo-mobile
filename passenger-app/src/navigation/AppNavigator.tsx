@@ -2,9 +2,10 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator }   from '@react-navigation/bottom-tabs';
 import type { AppStackParamList, AppTabParamList } from './types';
-import HomeScreen        from '@/screens/HomeScreen';
+import HomeScreen         from '@/screens/HomeScreen';
 import OrderHistoryScreen from '@/screens/OrderHistoryScreen';
 import RequestRideScreen  from '@/screens/RequestRideScreen';
+import MapPickerScreen    from '@/screens/MapPickerScreen';
 import PaymentScreen      from '@/screens/PaymentScreen';
 import TrackingScreen     from '@/screens/TrackingScreen';
 
@@ -41,6 +42,11 @@ export default function AppNavigator() {
         name="RequestRide"
         component={RequestRideScreen}
         options={{ presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="MapPicker"
+        component={MapPickerScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen name="Payment"  component={PaymentScreen} />
       <Stack.Screen name="Tracking" component={TrackingScreen} />
