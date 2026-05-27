@@ -24,7 +24,9 @@ function initials(name: string): string {
 }
 
 function formatRating(rating: number | null | undefined): string {
-  if (rating == null) return 'Няма още';
+  // Ratings are 1-5; treat 0 as "no rating" too (defensive — backend
+  // shouldn't emit 0, but guards against odd DB state from manual seeds).
+  if (rating == null || rating <= 0) return 'Няма още';
   return `⭐ ${rating.toFixed(1)}`;
 }
 

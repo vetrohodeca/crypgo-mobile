@@ -24,7 +24,9 @@ function initials(name: string): string {
 }
 
 function formatRating(rating: number | null | undefined): string {
-  if (rating == null) return 'Няма още';
+  // Ratings are 1-5; treat 0 as "no rating" too (defensive — backend
+  // shouldn't emit 0, but guards against odd DB state from manual seeds).
+  if (rating == null || rating <= 0) return 'Няма още';
   return `⭐ ${rating.toFixed(1)}`;
 }
 
@@ -87,8 +89,8 @@ export default function ProfileScreen() {
       Alert.alert('Грешка', 'Моля въведете модел на автомобила.');
       return;
     }
-    if (!/^[A-Z]{1,2}[0-9]{3,4}[A-Z]{2}$/.test(trimmedPlate)) {
-      Alert.alert('Грешка', 'Невалиден регистрационен номер.\nПример: CA1234AB');
+    if (!/^[A-Z]{1,2}[0-9]{4}[A-Z]{1,2}$/.test(trimmedPlate)) {
+      Alert.alert('Грешка', 'Невалиден регистрационен номер.\nФормат: 1-2 букви, 4 цифри, 1-2 букви. Пример: CA1234AB');
       return;
     }
 
