@@ -13,8 +13,10 @@ interface AuthState {
   accessToken:  string | null;
   refreshToken: string | null;
   isLoggedIn:   boolean;
-  setTokens: (access: string, refresh: string, user: AuthUser) => void;
-  logout:    () => void;
+  setTokens:  (access: string, refresh: string, user: AuthUser) => void;
+  /** Merge profile changes (e.g. after PATCH /drivers/me/car) into the store. */
+  updateUser: (partial: Partial<AuthUser>) => void;
+  logout:     () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => {
@@ -29,6 +31,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
     user: null, accessToken: null, refreshToken: null, isLoggedIn: false,
     setTokens: (access, refresh, user) =>
       set({ accessToken: access, refreshToken: refresh, user, isLoggedIn: true }),
+    updateUser: (partial) =>
+      set((s) => (s.user ? { user: { ...s.user, ...partial } } : s)),
     logout: () =>
       set({ user: null, accessToken: null, refreshToken: null, isLoggedIn: false }),
   };

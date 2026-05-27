@@ -50,7 +50,8 @@ type EditSection = 'none' | 'name' | 'ln_node';
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
-  const logout = useAuthStore((s) => s.logout);
+  const logout     = useAuthStore((s) => s.logout);
+  const updateUser = useAuthStore((s) => s.updateUser);
 
   const [user, setUser]         = useState<User | null>(null);
   const [loading, setLoading]   = useState(true);
@@ -114,13 +115,16 @@ export default function ProfileScreen() {
     try {
       const updated = await usersApi.updateName({ name: trimmed });
       setUser(updated);
+      // Sync auth store so any other screen that reads useAuthStore.user.name
+      // reflects the change immediately (no logout/login needed).
+      updateUser({ name: updated.name });
       setEditSection('none');
     } catch {
       Alert.alert('Грешка', 'Не можа да се запази името. Опитайте отново.');
     } finally {
       setSaving(false);
     }
-  }, [nameInput]);
+  }, [nameInput, updateUser]);
 
   // ── Save Lightning Node ID ──────────────────────────────────────────────────
   const saveLnNode = useCallback(async () => {
