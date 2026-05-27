@@ -97,14 +97,24 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* OSM map — flex: 1, same pattern as TrackingScreen */}
-      <OsmMap
-        ref={mapRef}
-        center={center}
-        zoom={14}
-        markers={markers}
-        style={styles.map}
-      />
+      {/* OSM map */}
+      <View style={styles.mapContainer}>
+        <OsmMap
+          ref={mapRef}
+          center={center}
+          zoom={14}
+          markers={markers}
+          style={styles.map}
+        />
+        {currentLocation && (
+          <TouchableOpacity
+            style={styles.locateBtn}
+            onPress={() => mapRef.current?.panTo(currentLocation.lat, currentLocation.lng, 15)}
+          >
+            <Text style={styles.locateBtnText}>⊙</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Bottom panel */}
       <View style={styles.panel}>
@@ -150,8 +160,16 @@ const styles = StyleSheet.create({
   },
   logoutText: { color: '#F7931A', fontWeight: '600', fontSize: 14 },
 
-  // flex: 1 — map fills all space between header and panel
-  map: { flex: 1 },
+  mapContainer: { flex: 1 },
+  map:          { flex: 1 },
+  locateBtn: {
+    position: 'absolute', bottom: 12, right: 12,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25, shadowRadius: 4, elevation: 5,
+  },
+  locateBtnText: { fontSize: 22, color: '#1a1a2e', lineHeight: 26 },
 
   panel: {
     backgroundColor: '#fff',

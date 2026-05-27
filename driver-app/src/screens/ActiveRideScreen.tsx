@@ -20,7 +20,7 @@ import { ordersApi, OsmMap } from '@cryptgo/shared';
 import * as ExpoLocation from 'expo-location';
 import { useDriverStore } from '@/store/useDriverStore';
 import { setActiveOrderId, stopBackgroundTracking } from '@/services/backgroundLocation.service';
-import type { Order }    from '@cryptgo/shared';
+import type { Order, OsmMapRef } from '@cryptgo/shared';
 import type { AppStackParamList, AppNavProp } from '@/navigation/types';
 
 type Route = RouteProp<AppStackParamList, 'ActiveRide'>;
@@ -30,6 +30,7 @@ export default function ActiveRideScreen() {
   const { params }     = useRoute<Route>();
   const setActiveOrder = useDriverStore((s) => s.setActiveOrder);
   const setStatus      = useDriverStore((s) => s.setStatus);
+  const mapRef         = useRef<OsmMapRef>(null);
 
   const [order,       setOrder]      = useState<Order | null>(null);
   const [loading,     setLoading]    = useState(true);
@@ -175,21 +176,29 @@ export default function ActiveRideScreen() {
       </View>
 
       {/* OSM map — shows driver position + both route endpoints */}
-      <OsmMap
-        center={routeCenter}
-        zoom={13}
-        markers={[
-          // Driver's current position
-          ...(myLocation
-            ? [{ lat: myLocation.lat, lng: myLocation.lng, label: 'Вие', color: '#1a1a2e' }]
-            : []),
-          // Pickup point (green)
-          { lat: pickupPoint.lat, lng: pickupPoint.lng, label: 'Начало', color: '#4caf50' },
-          // Dropoff point (red)
-          { lat: dropoffPoint.lat, lng: dropoffPoint.lng, label: 'Дестинация', color: '#f44336' },
-        ]}
-        style={styles.map}
-      />
+      <View style={styles.mapContainer}>
+        <OsmMap
+          ref={mapRef}
+          center={routeCenter}
+          zoom={13}
+          markers={[
+            ...(myLocation
+              ? [{ lat: myLocation.lat, lng: myLocation.lng, label: 'Вие', color: '#1a1a2e' }]
+              : []),
+            { lat: pickupPoint.lat, lng: pickupPoint.lng, label: 'Начало', color: '#4caf50' },
+            { lat: dropoffPoint.lat, lng: dropoffPoint.lng, label: 'Дестинация', color: '#f44336' },
+          ]}
+          style={styles.map}
+        />
+        {myLocation && (
+          <TouchableOpacity
+            style={styles.locateBtn}
+            onPress={() => mapRef.current?.panTo(myLocation.lat, myLocation.lng, 16)}
+          >
+            <Text style={styles.locateBtnText}>⊙</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Bottom panel */}
       <View style={styles.panel}>
@@ -237,7 +246,16 @@ const styles = StyleSheet.create({
     padding: 14, backgroundColor: NAVY, alignItems: 'center',
   },
   statusLabel:  { color: '#fff', fontWeight: '700', fontSize: 15 },
+  mapContainer: { flex: 1 },
   map:          { flex: 1 },
+  locateBtn: {
+    position: 'absolute', bottom: 12, right: 12,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25, shadowRadius: 4, elevation: 5,
+  },
+  locateBtnText: { fontSize: 22, color: NAVY, lineHeight: 26 },
   panel: {
     padding: 16, backgroundColor: '#fff',
     borderTopWidth: 1, borderTopColor: '#f0f0f0',
