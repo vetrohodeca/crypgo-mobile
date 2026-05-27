@@ -52,24 +52,43 @@ export default function HomeScreen() {
     }
   }, [currentLocation]);
 
+  // Ref that always holds the latest location so fetchNearestDriver can read
+  // it without having currentLocation as a useCallback dependency.
+  //
+  // Root cause of the flicker: currentLocation changes every 3 s (GPS watcher),
+  // which recreated fetchNearestDriver, which caused useEffect([fetchNearestDriver])
+  // to fire immediately — resetting the interval AND calling setLoadingDriver(true)
+  // every 3 s, making the spinner flash and re-rendering OsmMap repeatedly.
+  const locationRef = useRef(currentLocation);
+  useEffect(() => { locationRef.current = currentLocation; }, [currentLocation]);
+
+  // Track whether we already have a result so background refreshes don't show
+  // the loading spinner (only the very first fetch shows it).
+  const hasDriverDataRef = useRef(false);
+
+  // Stable callback — no dependency on currentLocation state.
+  // The interval is set up once and runs every 10 s as intended.
   const fetchNearestDriver = useCallback(async () => {
-    if (!currentLocation) return;
-    setLoadingDriver(true);
+    const loc = locationRef.current;
+    if (!loc) return;
+    // Show spinner only on the first load; subsequent refreshes update silently.
+    if (!hasDriverDataRef.current) setLoadingDriver(true);
     try {
-      const driver = await locationApi.nearestDriver(currentLocation.lat, currentLocation.lng);
+      const driver = await locationApi.nearestDriver(loc.lat, loc.lng);
+      hasDriverDataRef.current = true;
       setNearestDriver(driver);
     } catch {
       // silent — no available driver
     } finally {
       setLoadingDriver(false);
     }
-  }, [currentLocation]);
+  }, []); // stable — deps managed via refs
 
   useEffect(() => {
     fetchNearestDriver();
     const id = setInterval(fetchNearestDriver, 10_000);
     return () => clearInterval(id);
-  }, [fetchNearestDriver]);
+  }, [fetchNearestDriver]); // fetchNearestDriver is stable → runs once on mount
 
   useEffect(() => {
     if (currentOrder?.status === 'IN_PROGRESS' || currentOrder?.status === 'ACCEPTED') {
