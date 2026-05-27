@@ -40,12 +40,20 @@ export default function HomeScreen() {
   const isAvailable  = status === 'AVAILABLE' || status === 'BUSY';
 
   // GPS hook — foreground fallback
-  const { currentLocation, requestPermission, startTracking, stopTracking } = useLocation({
+  const { currentLocation, requestPermission, getCurrentPosition, startTracking, stopTracking } = useLocation({
     intervalMs: 3_000,
     onUpdate: (coords) => {
       if (isAvailable) emitLocation(coords.lat, coords.lng);
     },
   });
+
+  // Show driver's own position on the map immediately, even while OFFLINE
+  useEffect(() => {
+    (async () => {
+      const granted = await requestPermission();
+      if (granted) await getCurrentPosition();
+    })();
+  }, []);
 
   // When an active ride exists -> navigate to ActiveRide
   useEffect(() => {
@@ -111,6 +119,7 @@ export default function HomeScreen() {
         center={center}
         zoom={14}
         markers={myMarker}
+        locatePosition={currentLocation}
         style={styles.map}
       />
 
