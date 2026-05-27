@@ -1,10 +1,10 @@
 /**
- * HomeScreen — Главен екран за пътника.
+ * HomeScreen — Main screen for the passenger.
  *
- * Показва:
- *   - OSM карта на цял екран с текущата позиция на пътника
- *   - Маркер на най-близкия свободен шофьор (GEORADIUS)
- *   - Бутон "Заяви курс" → RequestRideScreen
+ * Displays:
+ *   - OSM map with the passenger's current position
+ *   - Marker for the nearest available driver (GEORADIUS)
+ *   - "Request Ride" button -> RequestRideScreen
  */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
@@ -39,7 +39,7 @@ export default function HomeScreen() {
     })();
   }, []);
 
-  // Центрираме картата при промяна на позицията
+  // Re-centre the map when the position changes
   useEffect(() => {
     if (currentLocation) {
       mapRef.current?.panTo(currentLocation.lat, currentLocation.lng, 15);
@@ -53,7 +53,7 @@ export default function HomeScreen() {
       const driver = await locationApi.nearestDriver(currentLocation.lat, currentLocation.lng);
       setNearestDriver(driver);
     } catch {
-      // тихо — няма наличен шофьор
+      // silent — no available driver
     } finally {
       setLoadingDriver(false);
     }
@@ -76,27 +76,35 @@ export default function HomeScreen() {
 
   const center = currentLocation ?? SOFIA;
 
-  const markers = nearestDriver
-    ? [{ lat: nearestDriver.lat, lng: nearestDriver.lng, label: `🚕 ${nearestDriver.distanceKm.toFixed(2)} км`, color: '#F7931A' }]
-    : [];
+  const markers = [
+    // Passenger's own position
+    ...(currentLocation
+      ? [{ lat: currentLocation.lat, lng: currentLocation.lng, label: '📍 Вие', color: '#2196F3' }]
+      : []),
+    // Nearest available driver
+    ...(nearestDriver
+      ? [{ lat: nearestDriver.lat, lng: nearestDriver.lng, label: `🚕 ${nearestDriver.distanceKm.toFixed(2)} км`, color: '#F7931A' }]
+      : []),
+  ];
 
   return (
-    <View style={styles.container}>
-      {/* OSM карта — цял екран */}
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>🗺 CrypGo</Text>
+        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+          <Text style={styles.logoutText}>Изход</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* OSM map — flex: 1, same pattern as TrackingScreen */}
       <OsmMap
         ref={mapRef}
         center={center}
         zoom={14}
         markers={markers}
-        style={StyleSheet.absoluteFillObject}
+        style={styles.map}
       />
-
-      {/* Logout — floating top-right */}
-      <SafeAreaView style={styles.topBar} pointerEvents="box-none">
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Text style={styles.logoutText}>Изход</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
 
       {/* Bottom panel */}
       <View style={styles.panel}>
@@ -122,33 +130,33 @@ export default function HomeScreen() {
           <Text style={styles.permText}>Нужен е достъп до GPS за да заявите курс.</Text>
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container:   { flex: 1 },
+  container: { flex: 1, backgroundColor: '#fff' },
 
-  topBar: {
-    position: 'absolute', top: 0, right: 0, left: 0,
-    flexDirection: 'row', justifyContent: 'flex-end',
-    paddingHorizontal: 16, paddingTop: 8,
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
   },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#333' },
   logoutBtn: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
-    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#fff5eb', borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 6,
   },
   logoutText: { color: '#F7931A', fontWeight: '600', fontSize: 14 },
 
+  // flex: 1 — map fills all space between header and panel
+  map: { flex: 1 },
+
   panel: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32,
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8,
-    elevation: 8,
+    borderTopWidth: 1, borderTopColor: '#f0f0f0',
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
   },
   driverInfo: { textAlign: 'center', color: '#333', marginBottom: 12, fontSize: 15 },
   noDriver:   { textAlign: 'center', color: '#999', marginBottom: 12, fontSize: 14 },

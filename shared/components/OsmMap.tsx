@@ -1,11 +1,11 @@
 /**
- * OsmMap — OpenStreetMap карта чрез Leaflet.js в WebView.
+ * OsmMap — OpenStreetMap map via Leaflet.js in a WebView.
  *
- * Не изисква API ключ. Тайловете идват от tile.openstreetmap.org.
+ * No API key required. Tiles are served from tile.openstreetmap.org.
  *
- * Leaflet JS + CSS са embed-нати директно в HTML (leaflet-bundle.ts) —
- * не се правят заявки към CDN при стартиране, картата работи дори офлайн
- * (с изключение на самите map тайлове, за които е нужен интернет).
+ * Leaflet JS + CSS are embedded directly in HTML (leaflet-bundle.ts) —
+ * no CDN requests are made on startup; the map works even offline
+ * (except for the map tiles themselves, which require an internet connection).
  */
 import React, { useRef, useImperativeHandle, forwardRef, useMemo, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -34,8 +34,8 @@ interface OsmMapProps {
   onReady?: () => void;
 }
 
-// HTML се генерира веднъж с начален център — по-нататък се обновява чрез JS.
-// Leaflet JS и CSS са вградени директно — без нужда от CDN/мрежа при зареждане.
+// HTML is built once with the initial centre — afterwards updated via JS.
+// Leaflet JS and CSS are embedded directly — no CDN/network needed on load.
 function buildHtml(center: { lat: number; lng: number }, zoom: number): string {
   return `<!DOCTYPE html>
 <html>
@@ -110,18 +110,18 @@ const OsmMap = forwardRef<OsmMapRef, OsmMapProps>(function OsmMap(
   const webViewRef  = useRef<WebView>(null);
   const initialZoom = useRef(zoom).current;
 
-  // HTML се строи веднъж — WebView не се рестартира при промяна на props
+  // HTML is built once — WebView does not restart when props change
   const html = useMemo(
     () => buildHtml(center, initialZoom),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
-  // Обновяваме маркерите при промяна (без reload на WebView)
+  // Update markers on change (without reloading the WebView)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { inject({ type: 'setMarkers', markers }); }, [JSON.stringify(markers)]);
 
-  // Обновяваме центъра при промяна
+  // Update the centre when it changes
   useEffect(() => {
     inject({ type: 'panTo', lat: center.lat, lng: center.lng, zoom });
   // eslint-disable-next-line react-hooks/exhaustive-deps

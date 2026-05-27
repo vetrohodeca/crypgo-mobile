@@ -1,4 +1,4 @@
-// ── Шофьори ───────────────────────────────────────────────────────
+// Drivers
 
 export type DriverStatus = 'OFFLINE' | 'AVAILABLE' | 'BUSY';
 
@@ -27,7 +27,7 @@ export interface UpdateDriverStatusDto {
   status: DriverStatus;
 }
 
-// Резултат от GEORADIUS (GET /location/nearest-driver)
+// Result from GEORADIUS (GET /location/nearest-driver)
 export interface NearestDriverResult {
   driverId: string;
   distanceKm: number;

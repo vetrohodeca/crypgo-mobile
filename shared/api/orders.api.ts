@@ -13,7 +13,7 @@ const post = <T>(url: string, d?: any)  => apiClient.post<T>(url, d).then((r: Ax
 const patch = <T>(url: string, d?: any) => apiClient.patch<T>(url, d).then((r: AxiosResponse<T>) => r.data);
 
 export const ordersApi = {
-  // ── Пътник ──────────────────────────────────────────────────────
+  // Passenger
   create:          (dto: CreateOrderDto)                           => post<Order>('/orders', dto),
   initiatePayment: (id: string, dto: InitiatePaymentDto)          => post<InitiatePaymentResponse>(`/orders/${id}/payment`, dto),
   complete:        (id: string, dto: RevealPreimageDto)           => patch<Order>(`/orders/${id}/complete`, dto),
@@ -21,7 +21,7 @@ export const ordersApi = {
   myOrders:        ()                                              => get<Order[]>('/orders/my'),
   findOne:         (id: string)                                    => get<Order>(`/orders/${id}`),
 
-  // ── Шофьор ──────────────────────────────────────────────────────
+  // Driver
   available:       ()                                              => get<Order[]>('/orders/available'),
   driverOrders:    ()                                              => get<Order[]>('/orders/driver/my'),
   accept:          (id: string)                                    => patch<Order>(`/orders/${id}/accept`),

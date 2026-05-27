@@ -24,7 +24,7 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
-      ],
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,7 +35,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "CrypGo използва GPS за да проследи вашия курс."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "extra": {
       "apiBaseUrl": "http://10.0.2.2:3000"

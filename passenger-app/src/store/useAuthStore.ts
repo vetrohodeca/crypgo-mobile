@@ -1,8 +1,8 @@
 /**
- * useAuthStore — JWT токени + потребителска информация.
+ * useAuthStore — JWT tokens + user information.
  *
- * Токените се пазят в паметта (за MVP).
- * В production: AsyncStorage / expo-secure-store.
+ * Tokens are kept in memory (for MVP).
+ * In production: AsyncStorage / expo-secure-store.
  */
 import { create } from 'zustand';
 import { configureApiClient } from '@cryptgo/shared';
@@ -25,7 +25,7 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => {
-  // Конфигурираме Axios клиента с callback-и към store-а
+  // Configure the Axios client with callbacks to the store
   configureApiClient({
     getAccessToken:  () => get().accessToken,
     getRefreshToken: () => get().refreshToken,

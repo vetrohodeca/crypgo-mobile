@@ -1,9 +1,9 @@
 /**
- * RequestRideScreen — Заявка на курс.
+ * RequestRideScreen — Request a ride.
  *
- * Пътникът въвежда адреси за pickup и dropoff.
- * Backend-ът геокодира → изчислява маршрут → връща цена.
- * След потвърждение → generatePreimage → initiatePayment → PaymentScreen.
+ * The passenger enters pickup and dropoff addresses.
+ * Backend geocodes -> calculates route -> returns price.
+ * After confirmation -> generatePreimage -> initiatePayment -> PaymentScreen.
  */
 import React, { useState } from 'react';
 import {
@@ -13,6 +13,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { ordersApi } from '@cryptgo/shared';
 import { generatePreimage } from '@/services/breez.service';
+import { savePreimage }    from '@/services/preimageService';
 import { useOrderStore }    from '@/store/useOrderStore';
 import { useLocation }      from '@cryptgo/shared';
 import type { AppNavProp }  from '@/navigation/types';
@@ -24,11 +25,11 @@ export default function RequestRideScreen() {
 
   const [pickup,    setPickup]   = useState('');
   const [dropoff,   setDropoff]  = useState('');
-  const [order,     setOrder]    = useState<any>(null); // preview след createOrder
+  const [order,     setOrder]    = useState<any>(null); // preview after createOrder
   const [step,      setStep]     = useState<'input' | 'confirm' | 'paying'>('input');
   const [loading,   setLoading]  = useState(false);
 
-  // ── Стъпка 1: Заявка към backend (геокодиране + цена) ─────────────
+  // Step 1: Request to backend (geocoding + price)
 
   const handleCalculate = async () => {
     if (!pickup.trim() || !dropoff.trim()) {
@@ -40,7 +41,7 @@ export default function RequestRideScreen() {
       const created = await ordersApi.create({
         pickup_address:  pickup.trim(),
         dropoff_address: dropoff.trim(),
-        // Ако имаме GPS — подаваме координатите директно (без геокодиране)
+        // If GPS is available — pass coordinates directly (no geocoding)
         ...(currentLocation
           ? { pickup_lat: currentLocation.lat, pickup_lng: currentLocation.lng }
           : {}),
@@ -54,7 +55,7 @@ export default function RequestRideScreen() {
     }
   };
 
-  // ── Стъпка 2: Потвърждение + генериране на preimage ──────────────
+  // Step 2: Confirmation + preimage generation
 
   const handleConfirmAndPay = async () => {
     if (!order) return;
@@ -62,10 +63,13 @@ export default function RequestRideScreen() {
     setLoading(true);
 
     try {
-      // Генерираме preimage ЛОКАЛНО — НИКОГА не се изпраща преди COMPLETED
+      // Generate preimage LOCALLY — NEVER sent before COMPLETED
       const { preimage, paymentHash } = await generatePreimage();
 
-      // Изпращаме само SHA256(preimage) = paymentHash към backend-а
+      // Save preimage in SecureStore IMMEDIATELY — survives app restart / fast refresh
+      await savePreimage(order.id, preimage);
+
+      // Send only SHA256(preimage) = paymentHash to the backend
       const resp = await ordersApi.initiatePayment(order.id, {
         payment_hash: paymentHash,
       });
@@ -80,7 +84,7 @@ export default function RequestRideScreen() {
     }
   };
 
-  // ── UI ────────────────────────────────────────────────────────────
+  // UI
 
   if (step === 'confirm' && order) {
     const priceEur = parseFloat(order.price_eur).toFixed(2);

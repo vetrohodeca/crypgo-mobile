@@ -1,21 +1,28 @@
 /**
- * TrackingScreen — Real-time проследяване на шофьора.
+ * TrackingScreen — Real-time driver tracking.
  *
- * Polling на статуса на поръчката на всеки 3с.
- * WebSocket за GPS позицията на шофьора и geofencing trigger.
+ * Polls order status every 3 seconds.
+ * WebSocket for the driver's GPS position and geofencing trigger.
+ *
+ * Preimage flow:
+ *   1. Load from Zustand store (if we are in the same session)
+ *   2. Fallback: load from SecureStore (if the app was restarted)
+ *   3. If not found -> show a warning + cancel button
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, Alert, TouchableOpacity,
-  ActivityIndicator, SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView as SafeArea } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ordersApi, OsmMap } from '@cryptgo/shared';
 import type { OsmMapRef, OsmMarker } from '@cryptgo/shared';
 import { useWebSocket } from '@cryptgo/shared';
+import * as ExpoLocation from 'expo-location';
 import { useAuthStore }  from '@/store/useAuthStore';
 import { useOrderStore } from '@/store/useOrderStore';
+import { loadPreimage, clearPreimage } from '@/services/preimageService';
 import type { AppStackParamList, AppNavProp } from '@/navigation/types';
 
 type Route = RouteProp<AppStackParamList, 'Tracking'>;
@@ -31,14 +38,55 @@ export default function TrackingScreen() {
   const setCurrentOrder = useOrderStore((s) => s.setCurrentOrder);
   const clearOrder      = useOrderStore((s) => s.clear);
 
-  const mapRef       = useRef<OsmMapRef>(null);
-  const mountedRef   = useRef(true);
+  const mapRef     = useRef<OsmMapRef>(null);
+  const mountedRef = useRef(true);
 
-  const [driverPos,   setDriverPos]   = useState<{ lat: number; lng: number } | null>(null);
-  const [completing,  setCompleting]  = useState(false);
-  const [geofenceHit, setGeofenceHit] = useState(false);
+  const [myLocation,       setMyLocation]        = useState<{ lat: number; lng: number } | null>(null);
+  const [driverPos,        setDriverPos]        = useState<{ lat: number; lng: number } | null>(null);
+  const [completing,       setCompleting]        = useState(false);
+  const [geofenceHit,      setGeofenceHit]       = useState(false);
+  const [restoredPreimage, setRestoredPreimage]  = useState<string | null>(null);
+  // true while SecureStore loads — do not show the missing-preimage UI while waiting
+  const [preimageLoading,  setPreimageLoading]   = useState(true);
 
-  // ── Polling — статус на поръчката (всеки 3с) ─────────────────────
+  // GPS — passenger's own position (direct expo-location, no race condition)
+  useEffect(() => {
+    let sub: ExpoLocation.LocationSubscription | null = null;
+    let mounted = true;
+
+    (async () => {
+      const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+      if (status !== 'granted' || !mounted) return;
+      sub = await ExpoLocation.watchPositionAsync(
+        { accuracy: ExpoLocation.Accuracy.Balanced, timeInterval: 4_000, distanceInterval: 10 },
+        (loc) => { if (mounted) setMyLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude }); },
+      );
+    })();
+
+    return () => { mounted = false; sub?.remove(); };
+  }, []);
+
+  // Load preimage from SecureStore on mount
+  useEffect(() => {
+    const fromStore = pendingInvoice?.preimage ?? null;
+    if (fromStore) {
+      // Already in the Zustand store — no need to read from SecureStore
+      setPreimageLoading(false);
+      return;
+    }
+
+    // Fallback: attempt to read from SecureStore (survives app restart)
+    loadPreimage(params.orderId).then((p) => {
+      if (__DEV__) {
+        console.log(`[TrackingScreen] SecureStore preimage for ${params.orderId.slice(0, 8)}…:`,
+          p ? `${p.slice(0, 8)}… (намерен ✓)` : 'null (не е намерен)');
+      }
+      if (p) setRestoredPreimage(p);
+      setPreimageLoading(false);
+    });
+  }, [params.orderId]);
+
+  // Polling — order status (every 3 seconds)
   useEffect(() => {
     mountedRef.current = true;
 
@@ -58,7 +106,7 @@ export default function TrackingScreen() {
           Alert.alert('Поръчката е анулирана', '',
             [{ text: 'OK', onPress: () => { clearOrder(); navigation.navigate('Tabs'); } }]);
         }
-      } catch { /* тихо */ }
+      } catch { /* silent */ }
     };
 
     fetchOrder();
@@ -66,7 +114,7 @@ export default function TrackingScreen() {
     return () => { mountedRef.current = false; clearInterval(intervalId); };
   }, [params.orderId]);
 
-  // ── WebSocket — GPS позиция на шофьора ────────────────────────────
+  // WebSocket — driver GPS position
   const { connected, joinOrder, leaveOrder } = useWebSocket({
     token: accessToken,
     onDriverLocation: useCallback((data) => {
@@ -86,19 +134,16 @@ export default function TrackingScreen() {
     return () => leaveOrder(params.orderId);
   }, [params.orderId]);
 
-  // ── Завършване — разкриване на preimage ──────────────────────────
+  // Complete ride — reveal preimage
   const handleComplete = async () => {
-    if (!pendingInvoice?.preimage) {
-      Alert.alert('Грешка', 'Preimage не е наличен.');
-      return;
-    }
+    const preimage = pendingInvoice?.preimage ?? restoredPreimage;
+    if (!preimage) return; // guard — the button should not be shown without a preimage
+
     setCompleting(true);
     try {
-      // СИГУРНОСТ: preimage се изпраща САМО при завършване
-      const completed = await ordersApi.complete(params.orderId, {
-        preimage: pendingInvoice.preimage,
-      });
+      const completed = await ordersApi.complete(params.orderId, { preimage });
       setCurrentOrder(completed);
+      await clearPreimage(params.orderId);
       Alert.alert('✅ Курсът приключи', 'Плащането е освободено към шофьора. Благодарим!',
         [{ text: 'OK', onPress: () => { clearOrder(); navigation.navigate('Tabs'); } }]);
     } catch (err: any) {
@@ -108,8 +153,35 @@ export default function TrackingScreen() {
     }
   };
 
+  // Cancel a stuck order (no preimage available)
+  const handleCancelStuck = () => {
+    Alert.alert(
+      'Анулиране на поръчката',
+      'Данните за плащане (preimage) липсват — не може да се завърши нормално. '
+      + 'Lightning средствата ще се върнат автоматично при изтичане на invoice-а.\n\n'
+      + 'Анулирай поръчката?',
+      [
+        { text: 'Не', style: 'cancel' },
+        {
+          text: 'Да, анулирай',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ordersApi.cancelByPassenger(params.orderId);
+              clearOrder();
+              navigation.navigate('Tabs');
+            } catch (e: any) {
+              Alert.alert('Грешка', e?.response?.data?.message ?? 'Не може да се анулира.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const orderStatus  = currentOrder?.status ?? 'ACCEPTED';
   const isInProgress = orderStatus === 'IN_PROGRESS';
+  const hasPreimage  = !!(pendingInvoice?.preimage ?? restoredPreimage);
 
   const statusLabels: Record<string, string> = {
     HELD:        'Чакаме шофьор...',
@@ -119,15 +191,20 @@ export default function TrackingScreen() {
     CANCELED:    '❌ Анулиран',
   };
 
-  // Маркери за картата
   const center = driverPos ?? (currentOrder
     ? { lat: Number(currentOrder.pickup_lat), lng: Number(currentOrder.pickup_lng) }
     : SOFIA);
 
   const markers: OsmMarker[] = [];
+  // Passenger's own position
+  if (myLocation) {
+    markers.push({ lat: myLocation.lat, lng: myLocation.lng, label: '📍 Вие', color: '#2196F3' });
+  }
+  // Driver's position (from WebSocket)
   if (driverPos) {
     markers.push({ lat: driverPos.lat, lng: driverPos.lng, label: '🚕 Шофьор', color: '#1a1a2e' });
   }
+  // Dropoff destination
   if (currentOrder?.dropoff_lat) {
     markers.push({
       lat: Number(currentOrder.dropoff_lat),
@@ -138,14 +215,14 @@ export default function TrackingScreen() {
   }
 
   return (
-    <SafeArea style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Status bar */}
-      <View style={[styles.statusBar, isInProgress && styles.statusBarActive]}>
-        <View style={[styles.dot, connected ? styles.dotGreen : styles.dotRed]} />
+      <View style={styles.statusBar}>
         <Text style={styles.statusLabel}>{statusLabels[orderStatus] ?? orderStatus}</Text>
+        <View style={[styles.dot, connected ? styles.dotGreen : styles.dotRed]} />
       </View>
 
-      {/* OSM карта */}
+      {/* OSM map */}
       <OsmMap
         ref={mapRef}
         center={center}
@@ -163,7 +240,16 @@ export default function TrackingScreen() {
           {currentOrder ? `${parseFloat(currentOrder.price_eur).toFixed(2)} EUR` : '—'}
         </Text>
 
-        {isInProgress && !completing && (
+        {/* Waiting for SecureStore to load */}
+        {isInProgress && preimageLoading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color="#F7931A" size="small" />
+            <Text style={styles.loadingText}>  Зареждане...</Text>
+          </View>
+        )}
+
+        {/* Normal completion — preimage available */}
+        {isInProgress && !preimageLoading && hasPreimage && !completing && (
           <TouchableOpacity
             style={[styles.completeBtn, geofenceHit && styles.completeBtnPulse]}
             onPress={handleComplete}
@@ -172,6 +258,7 @@ export default function TrackingScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Completion in progress */}
         {completing && (
           <View style={styles.completingRow}>
             <ActivityIndicator color="#F7931A" />
@@ -179,7 +266,22 @@ export default function TrackingScreen() {
           </View>
         )}
 
-        {!isInProgress && (
+        {/* No preimage — order started in another session or device */}
+        {isInProgress && !preimageLoading && !hasPreimage && !completing && (
+          <View style={styles.noPreimageBox}>
+            <Text style={styles.noPreimageTitle}>⚠️ Липсват данни за плащане</Text>
+            <Text style={styles.noPreimageText}>
+              Тази поръчка е стартирана в друга сесия. Не може да се завърши нормално —
+              Lightning средствата ще се върнат автоматично при изтичане на invoice-а.
+            </Text>
+            <TouchableOpacity style={styles.cancelStuckBtn} onPress={handleCancelStuck}>
+              <Text style={styles.cancelStuckText}>Анулирай поръчката</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Driver is still on the way */}
+        {!isInProgress && !preimageLoading && (
           <Text style={styles.hint}>
             {orderStatus === 'ACCEPTED'
               ? 'Шофьорът се придвижва към вас.'
@@ -187,7 +289,7 @@ export default function TrackingScreen() {
           </Text>
         )}
       </View>
-    </SafeArea>
+    </SafeAreaView>
   );
 }
 
@@ -195,14 +297,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
 
   statusBar: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    padding: 14, backgroundColor: '#1a1a2e',
   },
-  statusBarActive: { backgroundColor: '#fff8f0' },
-  dot:      { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+  dot:      { width: 8, height: 8, borderRadius: 4, marginLeft: 8 },
   dotGreen: { backgroundColor: '#4caf50' },
-  dotRed:   { backgroundColor: '#f44336' },
-  statusLabel: { fontSize: 15, fontWeight: '600', color: '#333' },
+  dotRed:   { backgroundColor: '#ef5350' },
+  statusLabel: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
   map: { flex: 1 },
 
@@ -213,6 +314,9 @@ const styles = StyleSheet.create({
   address: { fontSize: 14, color: '#666', marginBottom: 4 },
   price:   { fontSize: 22, fontWeight: 'bold', color: '#F7931A', marginBottom: 12 },
 
+  loadingRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12 },
+  loadingText: { color: '#999', fontSize: 14 },
+
   completeBtn: {
     backgroundColor: '#4caf50', borderRadius: 14,
     padding: 16, alignItems: 'center',
@@ -220,8 +324,17 @@ const styles = StyleSheet.create({
   completeBtnPulse: { backgroundColor: '#2e7d32' },
   completeBtnText:  { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 
-  completingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12 },
+  completingRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12 },
   completingText: { color: '#666', fontSize: 14 },
+
+  noPreimageBox: {
+    backgroundColor: '#fff8e1', borderRadius: 14,
+    padding: 16, borderWidth: 1, borderColor: '#ffe082',
+  },
+  noPreimageTitle: { fontSize: 15, fontWeight: '700', color: '#f57c00', marginBottom: 8 },
+  noPreimageText:  { fontSize: 13, color: '#795548', lineHeight: 20, marginBottom: 12 },
+  cancelStuckBtn:  { alignItems: 'center', padding: 10 },
+  cancelStuckText: { color: '#d32f2f', fontWeight: '600', fontSize: 14 },
 
   hint: { textAlign: 'center', color: '#999', fontSize: 12, lineHeight: 18 },
 });

@@ -1,12 +1,12 @@
 /**
- * useWebSocket — Socket.io връзка с CrypGo backend.
+ * useWebSocket — Socket.io connection to the CrypGo backend.
  *
- * Автентикира се с JWT access token.
- * Връща:
- *   - socket    — io() инстанцията (или null ако не е свързана)
- *   - connected — boolean статус
- *   - joinOrder  — влизане в стая за реално-времен tracking
- *   - leaveOrder — излизане от стаята
+ * Authenticates with a JWT access token.
+ * Returns:
+ *   - socket    — the io() instance (or null when not connected)
+ *   - connected — boolean status
+ *   - joinOrder  — join a room for real-time tracking
+ *   - leaveOrder — leave the room
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
@@ -69,19 +69,19 @@ export function useWebSocket({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  /** Влизане в стаята на поръчката (получаване на GPS updates) */
+  /** Join the order room (receive GPS updates) */
   const joinOrder = useCallback((orderId: string) => {
     socketRef.current?.emit('join:order', orderId);
   }, []);
 
-  /** Излизане от стаята */
+  /** Leave the room */
   const leaveOrder = useCallback((orderId: string) => {
     socketRef.current?.emit('leave:order', orderId);
   }, []);
 
   /**
-   * Изпращане на GPS позиция (само за шофьори).
-   * orderId е опционален — ако е зададен, позицията се broadcast-ва към пътника.
+   * Send GPS position (drivers only).
+   * orderId is optional — if provided, the position is broadcast to the passenger.
    */
   const sendDriverLocation = useCallback(
     (lat: number, lng: number, orderId?: string) => {

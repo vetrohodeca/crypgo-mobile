@@ -1,13 +1,13 @@
 /**
- * ActiveRideScreen — Активен курс за шофьора.
+ * ActiveRideScreen — Active ride for the driver.
  *
- * Фази:
- *   ACCEPTED    → карта към pickup адреса, бутон "Взех пътника" (startOrder)
- *   IN_PROGRESS → карта към dropoff, чакаме preimage reveal от пътника
- *   COMPLETED   → показваме потвърждение за плащане
+ * Phases:
+ *   ACCEPTED    -> map to pickup address, "I picked up the passenger" button (startOrder)
+ *   IN_PROGRESS -> map to dropoff, waiting for preimage reveal from the passenger
+ *   COMPLETED   -> show payment confirmation
  *
- * GPS стриймът продължава от background service.
- * Polling на статуса на поръчката на всеки 3с.
+ * GPS stream continues from the background service.
+ * Poll order status every 3 seconds.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ordersApi, OsmMap } from '@cryptgo/shared';
+import * as ExpoLocation from 'expo-location';
 import { useDriverStore } from '@/store/useDriverStore';
 import { setActiveOrderId, stopBackgroundTracking } from '@/services/backgroundLocation.service';
 import type { Order }    from '@cryptgo/shared';
@@ -30,11 +31,29 @@ export default function ActiveRideScreen() {
   const setActiveOrder = useDriverStore((s) => s.setActiveOrder);
   const setStatus      = useDriverStore((s) => s.setStatus);
 
-  const [order,    setOrder]    = useState<Order | null>(null);
-  const [loading,  setLoading]  = useState(true);
-  const [acting,   setActing]   = useState(false);
+  const [order,       setOrder]      = useState<Order | null>(null);
+  const [loading,     setLoading]    = useState(true);
+  const [acting,      setActing]     = useState(false);
+  const [myLocation,  setMyLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Polling за статус на поръчката
+  // GPS — driver's own position (direct expo-location)
+  useEffect(() => {
+    let sub: ExpoLocation.LocationSubscription | null = null;
+    let mounted = true;
+
+    (async () => {
+      const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+      if (status !== 'granted' || !mounted) return;
+      sub = await ExpoLocation.watchPositionAsync(
+        { accuracy: ExpoLocation.Accuracy.Balanced, timeInterval: 3_000, distanceInterval: 5 },
+        (loc) => { if (mounted) setMyLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude }); },
+      );
+    })();
+
+    return () => { mounted = false; sub?.remove(); };
+  }, []);
+
+  // Poll order status
   useEffect(() => {
     let mounted = true;
 
@@ -52,7 +71,7 @@ export default function ActiveRideScreen() {
           setStatus('AVAILABLE');
           setActiveOrder(null);
         }
-      } catch { /* тихо */ }
+      } catch { /* silent */ }
       finally { if (mounted) setLoading(false); }
     };
 
@@ -61,7 +80,7 @@ export default function ActiveRideScreen() {
     return () => { mounted = false; clearInterval(intervalId); };
   }, [params.orderId]);
 
-  // ── Взех пътника → ACCEPTED → IN_PROGRESS ─────────────────────
+  // Pickup passenger: ACCEPTED -> IN_PROGRESS
   const handlePickup = async () => {
     if (!order) return;
     setActing(true);
@@ -76,7 +95,7 @@ export default function ActiveRideScreen() {
     }
   };
 
-  // ── Анулиране от шофьор ─────────────────────────────────────────
+  // Cancel by driver
   const handleCancel = () => {
     Alert.alert('Анулиране', 'Сигурни ли сте?', [
       { text: 'Не', style: 'cancel' },
@@ -102,7 +121,7 @@ export default function ActiveRideScreen() {
     return <View style={styles.center}><ActivityIndicator size="large" color="#1a1a2e" /></View>;
   }
 
-  // Целева точка зависи от фазата
+  // Target point depends on the phase
   const isPickup  = order.status === 'ACCEPTED';
   const target    = isPickup
     ? { latitude: Number(order.pickup_lat),  longitude: Number(order.pickup_lng) }
@@ -150,16 +169,26 @@ export default function ActiveRideScreen() {
         </Text>
       </View>
 
-      {/* OSM карта */}
+      {/* OSM map — centred between the driver and the target */}
       <OsmMap
-        center={{ lat: target.latitude, lng: target.longitude }}
-        zoom={15}
-        markers={[{
-          lat:   target.latitude,
-          lng:   target.longitude,
-          label: targetLabel,
-          color: isPickup ? '#4caf50' : '#f44336',
-        }]}
+        center={myLocation
+          ? { lat: (myLocation.lat + target.latitude) / 2, lng: (myLocation.lng + target.longitude) / 2 }
+          : { lat: target.latitude, lng: target.longitude }
+        }
+        zoom={myLocation ? 14 : 15}
+        markers={[
+          // Driver's own position
+          ...(myLocation
+            ? [{ lat: myLocation.lat, lng: myLocation.lng, label: '🚕 Вие', color: '#1a1a2e' }]
+            : []),
+          // Target (passenger or destination)
+          {
+            lat:   target.latitude,
+            lng:   target.longitude,
+            label: targetLabel,
+            color: isPickup ? '#4caf50' : '#f44336',
+          },
+        ]}
         style={styles.map}
       />
 
@@ -228,7 +257,7 @@ const styles = StyleSheet.create({
   waitText: { color: '#555', fontSize: 14, flex: 1 },
   cancelLink:     { alignItems: 'center', marginTop: 6 },
   cancelLinkText: { color: '#f44336', fontSize: 13 },
-  // Done screens
+  // Done screen styles
   doneContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, backgroundColor: '#fff' },
   doneIcon:      { fontSize: 64, marginBottom: 16 },
   doneTitle:     { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 12, textAlign: 'center' },

@@ -1,8 +1,8 @@
 /**
- * AvailableOrdersScreen — Налични поръчки за приемане (статус HELD).
+ * AvailableOrdersScreen — Available orders to accept (status HELD).
  *
- * Refresh на всеки 5с докато шофьорът е AVAILABLE.
- * Tap → OrderDetailScreen за детайли и приемане.
+ * Refreshes every 5 seconds while the driver is AVAILABLE.
+ * Tap -> OrderDetailScreen for details and acceptance.
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -31,7 +31,7 @@ export default function AvailableOrdersScreen() {
     try {
       const data = await ordersApi.available();
       setOrders(data);
-    } catch { /* тихо */ }
+    } catch { /* silent */ }
     finally { setLoading(false); setRefreshing(false); }
   }, [status]);
 

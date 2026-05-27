@@ -1,12 +1,12 @@
 /**
- * useDriverStore — статус на шофьора + активна поръчка.
+ * useDriverStore — driver status + active order.
  *
  * status: OFFLINE | AVAILABLE | BUSY
- *   - OFFLINE     → не вижда поръчки, GPS стрийм спрян
- *   - AVAILABLE   → вижда налични поръчки, GPS стрийм активен
- *   - BUSY        → изпълнява курс, GPS стрийм активен
+ *   - OFFLINE     -> cannot see orders, GPS stream stopped
+ *   - AVAILABLE   -> sees available orders, GPS stream active
+ *   - BUSY        -> executing a ride, GPS stream active
  *
- * activeOrderId: текущата приета поръчка (null = няма)
+ * activeOrderId: the currently accepted order (null = none)
  */
 import { create } from 'zustand';
 import type { DriverStatus, Order } from '@cryptgo/shared';
@@ -27,12 +27,12 @@ export const useDriverStore = create<DriverState>((set) => ({
   activeOrder:   null,
   isGpsTracking: false,
 
-  /** Променя статуса и го изпраща към backend-а */
+  /** Changes the status and sends it to the backend */
   setStatus: async (status) => {
     try {
       await apiClient.patch('/drivers/me/status', { status });
     } catch {
-      // Тихо — ще се sync-не при следващ request
+      // Silent — will sync on the next request
     }
     set({ status });
   },

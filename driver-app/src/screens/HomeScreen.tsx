@@ -1,11 +1,11 @@
 /**
- * HomeScreen — Главен екран за шофьора.
+ * HomeScreen — Main screen for the driver.
  *
- * Функционалности:
- *   - OFFLINE ↔ AVAILABLE toggle
- *   - При AVAILABLE: стартира фонов GPS стрийм → WebSocket → Redis GEOADD
- *   - Карта с текущата позиция
- *   - При активен курс → redirect към ActiveRide
+ * Features:
+ *   - OFFLINE <-> AVAILABLE toggle
+ *   - When AVAILABLE: starts background GPS stream -> WebSocket -> Redis GEOADD
+ *   - Map with current position
+ *   - When an active ride exists -> redirect to ActiveRide
  */
 import React, { useEffect, useCallback } from 'react';
 import {
@@ -47,14 +47,14 @@ export default function HomeScreen() {
     },
   });
 
-  // При активен курс → навигираме към ActiveRide
+  // When an active ride exists -> navigate to ActiveRide
   useEffect(() => {
     if (activeOrder?.status === 'ACCEPTED' || activeOrder?.status === 'IN_PROGRESS') {
       navigation.navigate('ActiveRide', { orderId: activeOrder.id });
     }
   }, [activeOrder]);
 
-  // ── Toggle OFFLINE ↔ AVAILABLE ──────────────────────────────────
+  // Toggle OFFLINE <-> AVAILABLE
 
   const handleToggle = useCallback(async (value: boolean) => {
     const newStatus = value ? 'AVAILABLE' : 'OFFLINE';
@@ -106,7 +106,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* OSM карта */}
+      {/* OSM map */}
       <OsmMap
         center={center}
         zoom={14}

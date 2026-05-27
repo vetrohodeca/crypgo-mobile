@@ -1,4 +1,4 @@
-// ── Потребители (пътници) ─────────────────────────────────────────
+// Users (passengers)
 
 export interface User {
   id: string;
@@ -8,7 +8,7 @@ export interface User {
   created_at: string;
 }
 
-// ── Auth DTOs ─────────────────────────────────────────────────────
+// Auth DTOs
 
 export interface RegisterPassengerDto {
   phone: string;

@@ -1,13 +1,13 @@
 /**
- * PaymentScreen — Преглед на Lightning invoice + потвърждение на плащане.
+ * PaymentScreen — View Lightning invoice + payment confirmation.
  *
- * Показва:
- *   - BOLT11 invoice (QR код или текст за копиране)
- *   - Сума в EUR и сатоши
- *   - Статус: чакане → платено (HELD) → шофьор пристига
+ * Displays:
+ *   - BOLT11 invoice (QR code or text for copying)
+ *   - Amount in EUR and satoshis
+ *   - Status: waiting -> paid (HELD) -> driver incoming
  *
- * При DEV_MODE: "Симулирай плащане" бутон.
- * В production: payBolt11Invoice() от Breez SDK.
+ * In DEV_MODE: "Simulate payment" button.
+ * In production: payBolt11Invoice() from Breez SDK.
  */
 import React, { useEffect, useState } from 'react';
 import {
@@ -33,7 +33,7 @@ export default function PaymentScreen() {
   const [paid,    setPaid]    = useState(false);
   const [polling, setPolling] = useState<ReturnType<typeof setInterval> | null>(null);
 
-  // Polling за статус на поръчката (HELD → ACCEPTED)
+  // Poll order status (HELD -> ACCEPTED)
   useEffect(() => {
     const id = setInterval(async () => {
       try {
@@ -48,7 +48,7 @@ export default function PaymentScreen() {
           Alert.alert('Анулирано', 'Поръчката е анулирана.');
           navigation.navigate('Tabs');
         }
-      } catch { /* тихо */ }
+      } catch { /* silent */ }
     }, 3_000);
 
     setPolling(id);
@@ -59,7 +59,7 @@ export default function PaymentScreen() {
     if (!pendingInvoice) return;
     setPaying(true);
     try {
-      // Breez SDK изпраща плащането (DEV_MODE → stub)
+      // Breez SDK sends the payment (DEV_MODE -> stub)
       await payBolt11Invoice(pendingInvoice.bolt11, pendingInvoice.amountSats);
       setPaid(true);
     } catch (err: any) {
@@ -115,7 +115,7 @@ export default function PaymentScreen() {
         </Text>
       </View>
 
-      {/* Invoice (съкратен) */}
+      {/* Invoice (truncated) */}
       <View style={styles.invoiceBox}>
         <Text style={styles.invoiceText} numberOfLines={3} ellipsizeMode="tail">
           {pendingInvoice.bolt11}
@@ -125,7 +125,7 @@ export default function PaymentScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Статус */}
+      {/* Status */}
       {paid ? (
         <View style={styles.statusBox}>
           <Text style={styles.statusText}>

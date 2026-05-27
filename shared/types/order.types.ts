@@ -1,4 +1,4 @@
-// ── Статуси ───────────────────────────────────────────────────────
+// Statuses
 
 export type OrderStatus =
   | 'CREATED'
@@ -10,17 +10,17 @@ export type OrderStatus =
 
 export type TransactionStatus = 'PENDING' | 'HELD' | 'SETTLED' | 'CANCELED';
 
-// ── Транзакция (ескроу) ───────────────────────────────────────────
+// Transaction (escrow)
 
 export interface Transaction {
   id: string;
-  amount_satoshis: string; // BigInt сериализиран като string
+  amount_satoshis: string; // BigInt serialised as string
   payment_hash: string;
   boltz_swap_id: string | null;
   status: TransactionStatus;
 }
 
-// ── Поръчка ───────────────────────────────────────────────────────
+// Order
 
 export interface Order {
   id: string;
@@ -34,14 +34,14 @@ export interface Order {
   dropoff_lng: number;
   distance_meters: number;
   duration_seconds: number;
-  price_eur: string; // Decimal сериализиран като string
+  price_eur: string; // Decimal serialised as string
   status: OrderStatus;
   created_at: string;
   updated_at: string;
   transaction: Transaction | null;
 }
 
-// ── DTOs ──────────────────────────────────────────────────────────
+// DTOs
 
 export interface CreateOrderDto {
   pickup_address: string;
@@ -53,16 +53,16 @@ export interface CreateOrderDto {
 }
 
 export interface InitiatePaymentDto {
-  payment_hash: string; // SHA256(preimage) — 64 hex символа
+  payment_hash: string; // SHA256(preimage) — 64 hex characters
 }
 
 export interface RevealPreimageDto {
-  preimage: string; // 64 hex символа — пази се само на устройството на пътника
+  preimage: string; // 64 hex characters — stored only on the passenger's device
 }
 
-// Отговор от initiatePayment — съдържа BOLT11 invoice
+// Response from initiatePayment — contains BOLT11 invoice
 export interface InitiatePaymentResponse extends Order {
-  invoice: string;      // BOLT11 invoice за плащане чрез Breez SDK
+  invoice: string;      // BOLT11 invoice for payment via Breez SDK
   swapId: string;       // Boltz swap ID
-  amountSats: number;   // Сума в сатоши
+  amountSats: number;   // Amount in satoshis
 }

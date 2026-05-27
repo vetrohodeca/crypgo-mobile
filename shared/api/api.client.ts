@@ -1,11 +1,11 @@
 /**
- * Axios клиент за CrypGo backend.
+ * Axios client for the CrypGo backend.
  *
- * Функционалности:
- * - Базов URL от константа (лесно сменяем за dev/prod)
- * - Автоматично прикачане на Authorization: Bearer <token>
- * - Автоматичен refresh на access token при 401
- * - Повторен опит след успешен refresh (1 път)
+ * Features:
+ * - Base URL from a constant (easy to switch for dev/prod)
+ * - Automatic Authorization: Bearer <token> attachment
+ * - Automatic access token refresh on 401
+ * - Single retry after a successful refresh
  */
 import axios, {
   AxiosInstance,
@@ -14,10 +14,10 @@ import axios, {
   InternalAxiosRequestConfig,
 } from 'axios';
 
-// Тази стойност се препокрива от конфигурацията на конкретното приложение
+// This value is overridden by the configuration of the specific application
 export const API_BASE_URL = 'http://10.0.2.2:3000'; // Android emulator → localhost
 
-// ── Callbacks за token storage (инжектирани от приложението) ──────
+// Callbacks for token storage (injected by the application)
 
 let _getAccessToken:  () => string | null  = () => null;
 let _getRefreshToken: () => string | null  = () => null;
@@ -38,7 +38,7 @@ export function configureApiClient(opts: {
   if (opts.baseURL) apiClient.defaults.baseURL = opts.baseURL;
 }
 
-// ── Axios инстанция ───────────────────────────────────────────────
+// Axios instance
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -46,7 +46,7 @@ export const apiClient: AxiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ── Request интерсептор: прикача JWT ──────────────────────────────
+// Request interceptor: attaches JWT
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -60,7 +60,7 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// ── Response интерсептор: refresh при 401 ────────────────────────
+// Response interceptor: refresh on 401
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -90,7 +90,7 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Ако вече refreshваме — чакаме в опашка
+    // If already refreshing — wait in the queue
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         failedQueue.push({ resolve, reject });

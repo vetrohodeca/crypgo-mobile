@@ -1,30 +1,30 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp }    from '@react-navigation/bottom-tabs';
 
-// ── Auth Stack ────────────────────────────────────────────────────
+// Auth Stack
 
 export type AuthStackParamList = {
   Login:    undefined;
   Register: undefined;
 };
 
-// ── App Tabs ──────────────────────────────────────────────────────
+// App Tabs
 
 export type AppTabParamList = {
-  Home:     undefined;  // Карта + заявка на курс
-  History:  undefined;  // История на поръчки
+  Home:     undefined;  // Map + ride request
+  History:  undefined;  // Order history
 };
 
-// ── App Stack (вложен в Tab) ──────────────────────────────────────
+// App Stack (nested in Tab)
 
 export type AppStackParamList = {
   Tabs:       undefined;
-  RequestRide: undefined;   // Избор на дестинация
-  Payment:    { orderId: string };  // Invoice + плащане
-  Tracking:   { orderId: string };  // Real-time проследяване
+  RequestRide: undefined;   // Destination selection
+  Payment:    { orderId: string };  // Invoice + payment
+  Tracking:   { orderId: string };  // Real-time tracking
 };
 
-// ── Navigation prop shortcuts ─────────────────────────────────────
+// Navigation prop shortcuts
 
 export type AuthNavProp  = NativeStackNavigationProp<AuthStackParamList>;
 export type AppNavProp   = NativeStackNavigationProp<AppStackParamList>;

@@ -1,15 +1,15 @@
 /**
- * Background Location Service — фонов GPS стрийм за шофьори.
+ * Background Location Service — background GPS stream for drivers.
  *
- * Използва expo-location + expo-task-manager за Android/iOS background location.
- * GPS данните се изпращат към WebSocket gateway-а на всеки ~3с.
+ * Uses expo-location + expo-task-manager for Android/iOS background location.
+ * GPS data is sent to the WebSocket gateway every ~3 seconds.
  *
- * Архитектура:
+ * Architecture:
  *   expo-task-manager (background task)
- *     └── получава LocationObject
- *           └── изпраща driver:location към Socket.io
+ *     └── receives LocationObject
+ *           └── emits driver:location to Socket.io
  *
- * В DEV_MODE: foreground-only (без реална background регистрация).
+ * In DEV_MODE: foreground-only (no real background registration).
  */
 import * as Location    from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
@@ -18,11 +18,11 @@ import { API_BASE_URL } from '@cryptgo/shared';
 
 export const BACKGROUND_LOCATION_TASK = 'CRYPTGO_DRIVER_LOCATION';
 
-// Socket инстанция — споделена между foreground и background
+// Socket instance — shared between foreground and background
 let _socket: Socket | null = null;
 let _orderId: string | null = null;
 
-/** Инициализира Socket.io връзката (извиква се при логин) */
+/** Initialises the Socket.io connection (called on login) */
 export function initDriverSocket(token: string) {
   if (_socket?.connected) return;
   _socket = io(API_BASE_URL, {
@@ -32,25 +32,25 @@ export function initDriverSocket(token: string) {
   });
 }
 
-/** Затваря Socket.io връзката (при logout / OFFLINE) */
+/** Closes the Socket.io connection (on logout / OFFLINE) */
 export function destroyDriverSocket() {
   _socket?.disconnect();
   _socket = null;
 }
 
-/** Задава активния orderId за broadcast */
+/** Sets the active orderId for broadcast */
 export function setActiveOrderId(orderId: string | null) {
   _orderId = orderId;
 }
 
-/** Изпраща позиция директно (foreground fallback) */
+/** Emits position directly (foreground fallback) */
 export function emitLocation(lat: number, lng: number) {
   _socket?.emit('driver:location', { lat, lng, orderId: _orderId ?? undefined });
 }
 
-// ── Background task definition ──────────────────────────────────
+// Background task definition
 //
-// expo-task-manager изисква дефиницията да е на top-level на файла.
+// expo-task-manager requires the definition to be at the top level of the file.
 
 TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: TaskManager.TaskManagerTaskBody<{ locations: Location.LocationObject[] }>) => {
   if (error) {
@@ -64,7 +64,7 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: TaskMan
   emitLocation(lat, lng);
 });
 
-// ── Start / Stop background tracking ────────────────────────────
+// Start / Stop background tracking
 
 export async function startBackgroundTracking(): Promise<boolean> {
   const { status } = await Location.requestBackgroundPermissionsAsync();
@@ -78,8 +78,8 @@ export async function startBackgroundTracking(): Promise<boolean> {
 
   await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
     accuracy:             Location.Accuracy.High,
-    timeInterval:         3_000,   // 3 секунди
-    distanceInterval:     5,       // минимум 5м
+    timeInterval:         3_000,   // 3 seconds
+    distanceInterval:     5,       // minimum 5m
     foregroundService: {
       notificationTitle:  'CrypGo Driver активен',
       notificationBody:   'GPS стрийм работи — клиентите ви виждат',

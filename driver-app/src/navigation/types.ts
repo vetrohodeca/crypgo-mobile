@@ -7,15 +7,15 @@ export type AuthStackParamList = {
 };
 
 export type AppTabParamList = {
-  Home:     undefined;   // Статус + карта
-  Orders:   undefined;   // Налични поръчки (HELD)
-  Earnings: undefined;   // История
+  Home:     undefined;   // Status + map
+  Orders:   undefined;   // Available orders (HELD)
+  Earnings: undefined;   // History
 };
 
 export type AppStackParamList = {
   Tabs:        undefined;
-  OrderDetail: { orderId: string };   // Детайл преди приемане
-  ActiveRide:  { orderId: string };   // Активен курс
+  OrderDetail: { orderId: string; readOnly?: boolean };   // Order detail before accepting / history
+  ActiveRide:  { orderId: string };                       // Active ride
 };
 
 export type AuthNavProp  = NativeStackNavigationProp<AuthStackParamList>;

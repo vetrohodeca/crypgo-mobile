@@ -1,15 +1,15 @@
 /**
- * useLocation — GPS локация на устройството.
+ * useLocation — Device GPS location.
  *
- * Обвива expo-location и предоставя:
+ * Wraps expo-location and provides:
  *   - currentLocation  — { lat, lng } | null
- *   - isTracking       — дали фоновото проследяване е активно
- *   - startTracking    — стартира GPS stream (за шофьори)
- *   - stopTracking     — спира GPS stream
- *   - requestPermission — заявка на разрешения
+ *   - isTracking       — whether background tracking is active
+ *   - startTracking    — starts the GPS stream (for drivers)
+ *   - stopTracking     — stops the GPS stream
+ *   - requestPermission — request permissions
  *
- * Geofencing (за пътници): haversineDistance() може да се използва
- * за проверка дали шофьорът е <30м от дестинацията.
+ * Geofencing (for passengers): haversineDistance() can be used
+ * to check whether the driver is <30m from the destination.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as ExpoLocation from 'expo-location';
@@ -20,9 +20,9 @@ export interface Coordinates {
 }
 
 interface UseLocationOptions {
-  /** Callback при всяко GPS обновление (само когато tracking е активен) */
+  /** Callback on every GPS update (only when tracking is active) */
   onUpdate?: (coords: Coordinates) => void;
-  /** Интервал в ms (по подразбиране: 3000мс = 3с) */
+  /** Interval in ms (default: 3000ms = 3s) */
   intervalMs?: number;
 }
 
@@ -35,7 +35,7 @@ export function useLocation({
   const [hasPermission, setHasPermission]     = useState(false);
   const watchRef = useRef<ExpoLocation.LocationSubscription | null>(null);
 
-  // ── Заявка на разрешения ──────────────────────────────────────
+  // Request permissions
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
     const { status: fg } = await ExpoLocation.requestForegroundPermissionsAsync();
@@ -43,12 +43,12 @@ export function useLocation({
       setHasPermission(false);
       return false;
     }
-    // Фоново разрешение е нужно само за шофьори (Driver App)
+    // Background permission is only needed for drivers (Driver App)
     setHasPermission(true);
     return true;
   }, []);
 
-  // ── Еднократно взимане на локацията ──────────────────────────
+  // One-time location fetch
 
   const getCurrentPosition = useCallback(async (): Promise<Coordinates | null> => {
     if (!hasPermission) return null;
@@ -60,7 +60,7 @@ export function useLocation({
     return coords;
   }, [hasPermission]);
 
-  // ── Стартиране на GPS стрийм ──────────────────────────────────
+  // Start GPS stream
 
   const startTracking = useCallback(async () => {
     if (!hasPermission || isTracking) return;
@@ -69,7 +69,7 @@ export function useLocation({
       {
         accuracy: ExpoLocation.Accuracy.High,
         timeInterval: intervalMs,
-        distanceInterval: 5, // минимум 5м промяна
+        distanceInterval: 5, // minimum 5m change
       },
       (location: ExpoLocation.LocationObject) => {
         const coords = {
@@ -84,7 +84,7 @@ export function useLocation({
     setIsTracking(true);
   }, [hasPermission, isTracking, intervalMs, onUpdate]);
 
-  // ── Спиране на GPS стрийм ─────────────────────────────────────
+  // Stop GPS stream
 
   const stopTracking = useCallback(() => {
     watchRef.current?.remove();
@@ -92,7 +92,7 @@ export function useLocation({
     setIsTracking(false);
   }, []);
 
-  // Автоматично почистване
+  // Automatic cleanup
   useEffect(() => () => { watchRef.current?.remove(); }, []);
 
   return {
@@ -106,8 +106,8 @@ export function useLocation({
   };
 }
 
-// ── Haversine разстояние (метри) ──────────────────────────────────
-// Използва се за geofencing проверка (<30м от дестинацията)
+// Haversine distance (metres)
+// Used for geofencing check (<30m from destination)
 
 export function haversineDistance(a: Coordinates, b: Coordinates): number {
   const R   = 6_371_000;

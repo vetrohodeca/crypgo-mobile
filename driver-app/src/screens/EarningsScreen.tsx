@@ -9,7 +9,8 @@ import { ordersApi } from '@cryptgo/shared';
 import type { Order } from '@cryptgo/shared';
 import type { AppNavProp } from '@/navigation/types';
 
-const ACTIVE_STATUSES = new Set(['ACCEPTED', 'IN_PROGRESS']);
+const ACTIVE_STATUSES  = new Set(['ACCEPTED', 'IN_PROGRESS']);
+const HISTORY_STATUSES = new Set(['COMPLETED', 'CANCELED']);
 
 export default function EarningsScreen() {
   const navigation = useNavigation<AppNavProp>();
@@ -65,15 +66,23 @@ export default function EarningsScreen() {
             CREATED:     '#999',
           };
 
-          const isActive = ACTIVE_STATUSES.has(order.status);
+          const isActive  = ACTIVE_STATUSES.has(order.status);
+          const isHistory = HISTORY_STATUSES.has(order.status);
+          const isTappable = isActive || isHistory;
 
           return (
             <TouchableOpacity
-              style={[styles.card, isActive && styles.cardActive]}
-              activeOpacity={isActive ? 0.7 : 1}
+              style={[
+                styles.card,
+                isActive  && styles.cardActive,
+                isHistory && styles.cardHistory,
+              ]}
+              activeOpacity={isTappable ? 0.7 : 1}
               onPress={() => {
                 if (isActive) {
                   navigation.navigate('ActiveRide', { orderId: order.id });
+                } else if (isHistory) {
+                  navigation.navigate('OrderDetail', { orderId: order.id, readOnly: true });
                 }
               }}
             >
@@ -94,6 +103,9 @@ export default function EarningsScreen() {
                 )}
                 {isActive && (
                   <Text style={styles.tapHint}>Натисни за да продължиш →</Text>
+                )}
+                {isHistory && (
+                  <Text style={styles.tapHintHistory}>Виж на карта →</Text>
                 )}
               </View>
             </TouchableOpacity>
@@ -129,5 +141,9 @@ const styles = StyleSheet.create({
   addr:    { fontSize: 14, color: '#555', marginBottom: 4 },
   km:      { fontSize: 13, color: '#888' },
   earn:    { fontSize: 15, fontWeight: 'bold', color: '#4caf50' },
-  tapHint: { fontSize: 12, color: '#2196f3', fontStyle: 'italic' },
+  tapHint:        { fontSize: 12, color: '#2196f3', fontStyle: 'italic' },
+  tapHintHistory: { fontSize: 12, color: '#888',   fontStyle: 'italic' },
+  cardHistory: {
+    borderColor: '#e0e0e0',
+  },
 });
