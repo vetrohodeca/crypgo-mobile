@@ -4,11 +4,20 @@ export interface User {
   id: string;
   phone: string;
   name: string;
-  ln_node_id?: string | null;
+  ln_node_id: string | null;
+  rating: number | null;
   created_at: string;
 }
 
 // Auth DTOs
+
+export interface UpdateUserNameDto {
+  name: string;
+}
+
+export interface UpdateLnNodeDto {
+  ln_node_id: string;
+}
 
 export interface RegisterPassengerDto {
   phone: string;

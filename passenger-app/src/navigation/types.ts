@@ -14,6 +14,7 @@ export type AuthStackParamList = {
 export type AppTabParamList = {
   Home:     undefined;  // Map + ride request
   History:  undefined;  // Order history
+  Profile:  undefined;  // Passenger profile
 };
 
 /** Data returned by MapPickerScreen → consumed by RequestRideScreen */

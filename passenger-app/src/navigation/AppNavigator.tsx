@@ -4,6 +4,7 @@ import { createBottomTabNavigator }   from '@react-navigation/bottom-tabs';
 import type { AppStackParamList, AppTabParamList } from './types';
 import HomeScreen         from '@/screens/HomeScreen';
 import OrderHistoryScreen from '@/screens/OrderHistoryScreen';
+import ProfileScreen      from '@/screens/ProfileScreen';
 import RequestRideScreen  from '@/screens/RequestRideScreen';
 import MapPickerScreen    from '@/screens/MapPickerScreen';
 import PaymentScreen      from '@/screens/PaymentScreen';
@@ -29,6 +30,11 @@ function AppTabs() {
         name="History"
         component={OrderHistoryScreen}
         options={{ tabBarLabel: '📋 История' }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ tabBarLabel: '👤 Профил' }}
       />
     </Tab.Navigator>
   );

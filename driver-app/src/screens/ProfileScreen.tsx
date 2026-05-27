@@ -157,12 +157,14 @@ export default function ProfileScreen() {
       </View>
 
       {/* ── Rating + Approval ──────────────────────────────────────── */}
-      <View style={styles.badgeRow}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{formatRating(driver.rating)}</Text>
+      <View style={styles.infoCardRow}>
+        <View style={styles.infoCard}>
+          <Text style={styles.infoCardLabel}>Рейтинг</Text>
+          <Text style={styles.infoCardValue}>{formatRating(driver.rating)}</Text>
         </View>
-        <View style={[styles.badge, driver.is_approved ? styles.badgeGreen : styles.badgeOrange]}>
-          <Text style={styles.badgeText}>
+        <View style={[styles.infoCard, driver.is_approved ? styles.infoCardGreen : styles.infoCardOrange]}>
+          <Text style={styles.infoCardLabel}>Статус</Text>
+          <Text style={styles.infoCardValue}>
             {driver.is_approved ? '✅ Одобрен' : '⏳ Чака одобрение'}
           </Text>
         </View>
@@ -314,28 +316,37 @@ const styles = StyleSheet.create({
     color: '#555',
   },
 
-  // Badges
-  badgeRow: {
+  // Info cards (rating + status)
+  infoCardRow: {
     flexDirection: 'row',
     gap: 10,
     marginBottom: 20,
   },
-  badge: {
+  infoCard: {
+    flex: 1,
     backgroundColor: '#f0f0f0',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  badgeGreen: {
+  infoCardGreen: {
     backgroundColor: '#e6f4ea',
   },
-  badgeOrange: {
+  infoCardOrange: {
     backgroundColor: '#fff3e0',
   },
-  badgeText: {
-    fontSize: 13,
-    color: '#333',
-    fontWeight: '500',
+  infoCardLabel: {
+    fontSize: 11,
+    color: '#888',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  infoCardValue: {
+    fontSize: 14,
+    color: '#222',
+    fontWeight: '600',
   },
 
   // Section card
