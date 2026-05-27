@@ -94,6 +94,16 @@ export default function MapPickerScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Snap map to GPS and reverse-geocode immediately ─────────────
+  const handleUseMyLocation = () => {
+    if (!gpsLocation) return;
+    // Cancel any pending debounce — we want an instant geocode
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setLiveCenter(gpsLocation);
+    mapRef.current?.panTo(gpsLocation.lat, gpsLocation.lng, 16);
+    doReverseGeocode(gpsLocation.lat, gpsLocation.lng);
+  };
+
   // ── Confirm — pass chosen address back to RequestRideScreen ─────
   const handleConfirm = () => {
     if (!address) return;
@@ -151,6 +161,13 @@ export default function MapPickerScreen() {
 
       {/* Fixed bottom panel */}
       <SafeAreaView style={styles.bottomSafe} edges={['bottom']}>
+        {/* "Use my location" — prominent button, visible as soon as GPS is acquired */}
+        {gpsLocation && (
+          <TouchableOpacity style={styles.gpsBtn} onPress={handleUseMyLocation}>
+            <Text style={styles.gpsBtnText}>📍 Използвай моята локация</Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           style={[styles.confirmBtn, (!address || geocoding) && styles.confirmBtnDisabled]}
           onPress={handleConfirm}
@@ -220,6 +237,20 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: '#f0f0f0',
     paddingHorizontal: 16, paddingTop: 12,
   },
+  // "Use my location" button — outlined style, distinct from the primary confirm
+  gpsBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#F7931A',
+    borderRadius: 14,
+    padding: 13,
+    marginBottom: 10,
+    backgroundColor: '#fff5eb',
+  },
+  gpsBtnText: { color: '#F7931A', fontWeight: '700', fontSize: 15 },
+
   confirmBtn: {
     backgroundColor: '#F7931A', borderRadius: 14,
     padding: 16, alignItems: 'center', marginBottom: 8,
