@@ -5,6 +5,7 @@ import type { AppStackParamList, AppTabParamList } from './types';
 import HomeScreen           from '@/screens/HomeScreen';
 import AvailableOrdersScreen from '@/screens/AvailableOrdersScreen';
 import EarningsScreen       from '@/screens/EarningsScreen';
+import ProfileScreen        from '@/screens/ProfileScreen';
 import OrderDetailScreen    from '@/screens/OrderDetailScreen';
 import ActiveRideScreen     from '@/screens/ActiveRideScreen';
 
@@ -22,6 +23,7 @@ function AppTabs() {
       <Tab.Screen name="Home"     component={HomeScreen}            options={{ tabBarLabel: '🗺 Карта' }} />
       <Tab.Screen name="Orders"   component={AvailableOrdersScreen} options={{ tabBarLabel: '📋 Поръчки' }} />
       <Tab.Screen name="Earnings" component={EarningsScreen}        options={{ tabBarLabel: '₿ Приходи' }} />
+      <Tab.Screen name="Profile"  component={ProfileScreen}         options={{ tabBarLabel: '👤 Профил' }} />
     </Tab.Navigator>
   );
 }

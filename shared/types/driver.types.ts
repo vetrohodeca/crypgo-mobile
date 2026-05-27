@@ -6,11 +6,12 @@ export interface Driver {
   id: string;
   phone: string;
   name: string;
-  ln_node_id: string;
+  ln_node_id: string | null;
   car_model: string;
   license_plate: string;
   is_approved: boolean;
   status: DriverStatus;
+  rating: number | null;
   created_at: string;
 }
 
@@ -25,6 +26,11 @@ export interface RegisterDriverDto {
 
 export interface UpdateDriverStatusDto {
   status: DriverStatus;
+}
+
+export interface UpdateDriverCarDto {
+  car_model: string;
+  license_plate: string;
 }
 
 // Result from GEORADIUS (GET /location/nearest-driver)

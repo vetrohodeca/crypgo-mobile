@@ -10,6 +10,7 @@ export type AppTabParamList = {
   Home:     undefined;   // Status + map
   Orders:   undefined;   // Available orders (HELD)
   Earnings: undefined;   // History
+  Profile:  undefined;   // Driver profile + car update
 };
 
 export type AppStackParamList = {
