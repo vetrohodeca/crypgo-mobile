@@ -184,7 +184,6 @@ export default function ActiveRideScreen() {
 
       {/* OSM map — driver position + both route endpoints + locate button */}
       <OsmMap
-        ref={mapRef}
         center={routeCenter}
         zoom={13}
         markers={[

@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ordersApi, OsmMap } from '@cryptgo/shared';
+import * as ExpoLocation from 'expo-location';
 import { useDriverStore } from '@/store/useDriverStore';
 import { setActiveOrderId } from '@/services/backgroundLocation.service';
 import type { Order, OrderStatus } from '@cryptgo/shared';
@@ -54,6 +55,33 @@ export default function OrderDetailScreen() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Continuous GPS watcher so the driver can see their own position on the map
+  // and use the locate button while reviewing order details.
+  useEffect(() => {
+    let sub: ExpoLocation.LocationSubscription | null = null;
+    let mounted = true;
+
+    (async () => {
+      const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+      if (status !== 'granted' || !mounted) return;
+
+      try {
+        const initial = await ExpoLocation.getCurrentPositionAsync(
+          { accuracy: ExpoLocation.Accuracy.Balanced },
+        );
+        if (mounted) setMyLocation({ lat: initial.coords.latitude, lng: initial.coords.longitude });
+      } catch { /* watcher will supply position when available */ }
+
+      sub = await ExpoLocation.watchPositionAsync(
+        { accuracy: ExpoLocation.Accuracy.Balanced, timeInterval: 3_000, distanceInterval: 0 },
+        (loc) => { if (mounted) setMyLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude }); },
+      );
+    })();
+
+    return () => { mounted = false; sub?.remove(); };
+  }, []);
 
   useEffect(() => {
     ordersApi.findOne(params.orderId)
@@ -124,9 +152,13 @@ export default function OrderDetailScreen() {
         center={{ lat: midLat, lng: midLng }}
         zoom={13}
         markers={[
+          ...(myLocation
+            ? [{ lat: myLocation.lat, lng: myLocation.lng, label: 'Вие', color: '#1a1a2e' }]
+            : []),
           { lat: pickup.latitude,  lng: pickup.longitude,  label: 'Вземане',    color: '#4caf50' },
           { lat: dropoff.latitude, lng: dropoff.longitude, label: 'Дестинация', color: '#f44336' },
         ]}
+        locatePosition={myLocation}
         style={styles.map}
       />
 
