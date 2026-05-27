@@ -7,7 +7,7 @@
  *   - Map with current position
  *   - When an active ride exists -> redirect to ActiveRide
  */
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   Switch, Alert,
@@ -39,19 +39,25 @@ export default function HomeScreen() {
 
   const isAvailable  = status === 'AVAILABLE' || status === 'BUSY';
 
-  // GPS hook — foreground fallback
-  const { currentLocation, requestPermission, getCurrentPosition, startTracking, stopTracking } = useLocation({
+  // Keep a ref so the GPS watcher callback always reads the latest value
+  // without needing to restart the watcher on every status change.
+  const isAvailableRef = useRef(isAvailable);
+  useEffect(() => { isAvailableRef.current = isAvailable; }, [isAvailable]);
+
+  // GPS hook — always-on watcher for map display; emits to server only when AVAILABLE.
+  // onUpdate is stable (no deps) so the watcher is never restarted due to status changes.
+  const { currentLocation, requestPermission, startTracking } = useLocation({
     intervalMs: 3_000,
-    onUpdate: (coords) => {
-      if (isAvailable) emitLocation(coords.lat, coords.lng);
-    },
+    onUpdate: useCallback((coords) => {
+      if (isAvailableRef.current) emitLocation(coords.lat, coords.lng);
+    }, []), // reads ref at call time — no stale closure
   });
 
-  // Show driver's own position on the map immediately, even while OFFLINE
+  // Start continuous GPS watcher on mount for map display (runs regardless of OFFLINE/AVAILABLE).
   useEffect(() => {
     (async () => {
       const granted = await requestPermission();
-      if (granted) await getCurrentPosition();
+      if (granted) await startTracking();
     })();
   }, []);
 
@@ -75,18 +81,19 @@ export default function HomeScreen() {
       }
       const bgStarted = await startBackgroundTracking();
       if (!bgStarted) {
-        // Foreground fallback
+        // Foreground fallback: watcher already running from mount; no-op if isTracking.
         await startTracking();
       }
       setGpsTrk(true);
     } else {
       await stopBackgroundTracking();
-      stopTracking();
+      // Do NOT stop the foreground watcher — keep it alive for map display.
+      // isAvailableRef is already false, so the watcher stops emitting immediately.
       setGpsTrk(false);
     }
 
     await setStatus(newStatus as any);
-  }, [requestPermission, startTracking, stopTracking, setGpsTrk, setStatus]);
+  }, [requestPermission, startTracking, setGpsTrk, setStatus]);
 
   const handleLogout = () => {
     stopBackgroundTracking();

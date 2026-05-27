@@ -30,18 +30,24 @@ export default function HomeScreen() {
   const [nearestDriver, setNearestDriver] = useState<NearestDriverResult | null>(null);
   const [loadingDriver, setLoadingDriver] = useState(false);
 
-  const { currentLocation, hasPermission, requestPermission, getCurrentPosition } = useLocation();
+  const { currentLocation, hasPermission, requestPermission, startTracking } = useLocation();
 
+  // Start continuous GPS watcher on mount so the marker and locate button
+  // stay updated as the user (or the emulator mock location) moves.
   useEffect(() => {
     (async () => {
       const granted = await requestPermission();
-      if (granted) await getCurrentPosition();
+      if (granted) await startTracking();
     })();
   }, []);
 
-  // Re-centre the map when the position changes
+  // Pan to the user's position the first time a GPS fix arrives.
+  // After that the marker updates automatically; the locate button handles
+  // manual re-centering so we don't jerk the map on every 3-second update.
+  const hasPannedRef = useRef(false);
   useEffect(() => {
-    if (currentLocation) {
+    if (currentLocation && !hasPannedRef.current) {
+      hasPannedRef.current = true;
       mapRef.current?.panTo(currentLocation.lat, currentLocation.lng, 15);
     }
   }, [currentLocation]);
