@@ -49,21 +49,32 @@ export function useLocation({
   }, []);
 
   // One-time location fetch
+  // Does NOT depend on hasPermission state — checks permission directly to avoid
+  // stale closure when called immediately after requestPermission().
 
   const getCurrentPosition = useCallback(async (): Promise<Coordinates | null> => {
-    if (!hasPermission) return null;
-    const loc = await ExpoLocation.getCurrentPositionAsync({
-      accuracy: ExpoLocation.Accuracy.High,
-    });
-    const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
-    setCurrentLocation(coords);
-    return coords;
-  }, [hasPermission]);
+    const { status } = await ExpoLocation.getForegroundPermissionsAsync();
+    if (status !== 'granted') return null;
+    try {
+      const loc = await ExpoLocation.getCurrentPositionAsync({
+        accuracy: ExpoLocation.Accuracy.Balanced,
+      });
+      const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+      setCurrentLocation(coords);
+      return coords;
+    } catch {
+      return null;
+    }
+  }, []); // no dependency on hasPermission — avoids stale closure
 
   // Start GPS stream
 
   const startTracking = useCallback(async () => {
-    if (!hasPermission || isTracking) return;
+    if (isTracking) return;
+    // Check permission directly — hasPermission state may be stale right after
+    // requestPermission() is called (React state updates are async).
+    const { status } = await ExpoLocation.getForegroundPermissionsAsync();
+    if (status !== 'granted') return;
 
     // Get an immediate fix before the watcher fires
     try {
@@ -92,7 +103,7 @@ export function useLocation({
     );
 
     setIsTracking(true);
-  }, [hasPermission, isTracking, intervalMs, onUpdate]);
+  }, [isTracking, intervalMs, onUpdate]);
 
   // Stop GPS stream
 
