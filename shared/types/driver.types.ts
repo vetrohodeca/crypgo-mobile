@@ -6,7 +6,8 @@ export interface Driver {
   id: string;
   phone: string;
   name: string;
-  ln_node_id: string | null;
+  /** Driver's Lightning Node ID is required at registration (Prisma: NOT NULL). */
+  ln_node_id: string;
   car_model: string;
   license_plate: string;
   is_approved: boolean;
