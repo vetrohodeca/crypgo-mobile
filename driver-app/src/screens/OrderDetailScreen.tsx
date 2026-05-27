@@ -119,18 +119,19 @@ export default function OrderDetailScreen() {
         <View style={{ width: 80 }} />
       </View>
 
-      <ScrollView>
-        {/* OSM map */}
-        <OsmMap
-          center={{ lat: midLat, lng: midLng }}
-          zoom={13}
-          markers={[
-            { lat: pickup.latitude,  lng: pickup.longitude,  label: '📍 Вземане',    color: '#4caf50' },
-            { lat: dropoff.latitude, lng: dropoff.longitude, label: '🏁 Дестинация', color: '#f44336' },
-          ]}
-          style={styles.map}
-        />
+      {/* OSM map — outside ScrollView to avoid WebView/ScrollView conflict on Android */}
+      <OsmMap
+        center={{ lat: midLat, lng: midLng }}
+        zoom={13}
+        markers={[
+          { lat: pickup.latitude,  lng: pickup.longitude,  label: 'Вземане',    color: '#4caf50' },
+          { lat: dropoff.latitude, lng: dropoff.longitude, label: 'Дестинация', color: '#f44336' },
+        ]}
+        style={styles.map}
+      />
 
+      {/* Scrollable details below the map */}
+      <ScrollView style={styles.scroll}>
         {/* Status (readOnly mode only) */}
         {readOnly && (
           <View style={[styles.statusBadge, { backgroundColor: STATUS_COLOR[order.status] + '18' }]}>
@@ -143,17 +144,16 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Details */}
         <View style={styles.details}>
           <Text style={styles.sectionTitle}>Маршрут</Text>
-          <Row label="📍 Вземане"         value={order.pickup_address} />
-          <Row label="🏁 Дестинация"      value={order.dropoff_address} />
+          <Row label="Вземане"             value={order.pickup_address} />
+          <Row label="Дестинация"          value={order.dropoff_address} />
           <View style={styles.divider} />
           <Row label="Разстояние"          value={`${km} км`} />
           <Row label="Прибл. времетраене" value={`~${mins} мин`} />
           <View style={styles.divider} />
           <Row
-            label={order.status === 'COMPLETED' ? '💰 Приход' : '💰 Цена'}
+            label={order.status === 'COMPLETED' ? 'Приход' : 'Цена'}
             value={`${eur} EUR`}
             bold
           />
@@ -166,7 +166,7 @@ export default function OrderDetailScreen() {
           <TouchableOpacity style={styles.acceptBtn} onPress={handleAccept} disabled={accepting}>
             {accepting
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.acceptText}>✅ Приеми поръчката</Text>
+              : <Text style={styles.acceptText}>Приеми поръчката</Text>
             }
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
@@ -205,8 +205,9 @@ const styles = StyleSheet.create({
   backBtnText:  { color: NAVY, fontSize: 15, fontWeight: '600' },
   headerTitle:  { fontSize: 16, fontWeight: 'bold', color: '#333' },
 
-  // Map
-  map: { height: 260 },
+  // Map — fixed height, outside ScrollView
+  map:    { height: 240 },
+  scroll: { flex: 1 },
 
   // Status badge (readOnly)
   statusBadge: {

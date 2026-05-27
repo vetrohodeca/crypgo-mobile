@@ -8,7 +8,7 @@
  * (except for the map tiles themselves, which require an internet connection).
  */
 import React, { useRef, useImperativeHandle, forwardRef, useMemo, useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type { WebViewErrorEvent, WebViewHttpErrorEvent } from 'react-native-webview';
 import type { ViewStyle } from 'react-native';
@@ -27,11 +27,13 @@ export interface OsmMapRef {
 }
 
 interface OsmMapProps {
-  center:   { lat: number; lng: number };
-  zoom?:    number;
-  markers?: OsmMarker[];
-  style?:   ViewStyle;
-  onReady?: () => void;
+  center:         { lat: number; lng: number };
+  zoom?:          number;
+  markers?:       OsmMarker[];
+  style?:         ViewStyle;
+  onReady?:       () => void;
+  /** When provided, a "locate me" button appears over the map bottom-right corner. */
+  locatePosition?: { lat: number; lng: number } | null;
 }
 
 // HTML is built once with the initial centre — afterwards updated via JS.
@@ -104,7 +106,7 @@ ${LEAFLET_JS}
 }
 
 const OsmMap = forwardRef<OsmMapRef, OsmMapProps>(function OsmMap(
-  { center, zoom = 14, markers = [], style, onReady },
+  { center, zoom = 14, markers = [], style, onReady, locatePosition },
   ref,
 ) {
   const webViewRef  = useRef<WebView>(null);
@@ -165,6 +167,15 @@ const OsmMap = forwardRef<OsmMapRef, OsmMapProps>(function OsmMap(
         showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
       />
+      {locatePosition && (
+        <TouchableOpacity
+          style={styles.locateBtn}
+          onPress={() => inject({ type: 'panTo', lat: locatePosition.lat, lng: locatePosition.lng, zoom: 16 })}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.locateBtnText}>⊙</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 });
@@ -172,6 +183,15 @@ const OsmMap = forwardRef<OsmMapRef, OsmMapProps>(function OsmMap(
 export default OsmMap;
 
 const styles = StyleSheet.create({
-  container: { overflow: 'hidden' },
-  webview:   { flex: 1, backgroundColor: 'transparent' },
+  container:     { overflow: 'hidden' },
+  webview:       { flex: 1, backgroundColor: 'transparent' },
+  locateBtn: {
+    position: 'absolute', bottom: 12, right: 12,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25, shadowRadius: 4, elevation: 5,
+  },
+  locateBtnText: { fontSize: 22, color: '#1a1a2e', lineHeight: 26 },
 });
