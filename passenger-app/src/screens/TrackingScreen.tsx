@@ -191,25 +191,40 @@ export default function TrackingScreen() {
     CANCELED:    '❌ Анулиран',
   };
 
-  const center = driverPos ?? (currentOrder
-    ? { lat: Number(currentOrder.pickup_lat), lng: Number(currentOrder.pickup_lng) }
-    : SOFIA);
+  // Map centre: midpoint of route if known, otherwise follow driver/fallback
+  const center = currentOrder?.pickup_lat && currentOrder?.dropoff_lat
+    ? {
+        lat: (Number(currentOrder.pickup_lat) + Number(currentOrder.dropoff_lat)) / 2,
+        lng: (Number(currentOrder.pickup_lng) + Number(currentOrder.dropoff_lng)) / 2,
+      }
+    : driverPos ?? (currentOrder
+        ? { lat: Number(currentOrder.pickup_lat), lng: Number(currentOrder.pickup_lng) }
+        : SOFIA);
 
   const markers: OsmMarker[] = [];
   // Passenger's own position
   if (myLocation) {
-    markers.push({ lat: myLocation.lat, lng: myLocation.lng, label: '📍 Вие', color: '#2196F3' });
+    markers.push({ lat: myLocation.lat, lng: myLocation.lng, label: 'Вие', color: '#2196F3' });
   }
   // Driver's position (from WebSocket)
   if (driverPos) {
-    markers.push({ lat: driverPos.lat, lng: driverPos.lng, label: '🚕 Шофьор', color: '#1a1a2e' });
+    markers.push({ lat: driverPos.lat, lng: driverPos.lng, label: 'Шофьор', color: '#1a1a2e' });
   }
-  // Dropoff destination
+  // Pickup point (start of route — green)
+  if (currentOrder?.pickup_lat) {
+    markers.push({
+      lat:   Number(currentOrder.pickup_lat),
+      lng:   Number(currentOrder.pickup_lng),
+      label: 'Начало',
+      color: '#4caf50',
+    });
+  }
+  // Dropoff destination (end of route — orange)
   if (currentOrder?.dropoff_lat) {
     markers.push({
-      lat: Number(currentOrder.dropoff_lat),
-      lng: Number(currentOrder.dropoff_lng),
-      label: '🏁 Дестинация',
+      lat:   Number(currentOrder.dropoff_lat),
+      lng:   Number(currentOrder.dropoff_lng),
+      label: 'Дестинация',
       color: '#F7931A',
     });
   }

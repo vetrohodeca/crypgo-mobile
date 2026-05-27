@@ -121,13 +121,18 @@ export default function ActiveRideScreen() {
     return <View style={styles.center}><ActivityIndicator size="large" color="#1a1a2e" /></View>;
   }
 
-  // Target point depends on the phase
   const isPickup  = order.status === 'ACCEPTED';
-  const target    = isPickup
-    ? { latitude: Number(order.pickup_lat),  longitude: Number(order.pickup_lng) }
-    : { latitude: Number(order.dropoff_lat), longitude: Number(order.dropoff_lng) };
-  const targetLabel = isPickup ? '📍 Вземи пътника' : '🏁 Крайна дестинация';
-  const targetAddr  = isPickup ? order.pickup_address : order.dropoff_address;
+  const targetAddr = isPickup ? order.pickup_address : order.dropoff_address;
+
+  // Fixed route endpoints — always shown on map
+  const pickupPoint  = { lat: Number(order.pickup_lat),  lng: Number(order.pickup_lng) };
+  const dropoffPoint = { lat: Number(order.dropoff_lat), lng: Number(order.dropoff_lng) };
+
+  // Map centre: midpoint of the full route (stable — doesn't jump as driver moves)
+  const routeCenter = {
+    lat: (pickupPoint.lat  + dropoffPoint.lat)  / 2,
+    lng: (pickupPoint.lng + dropoffPoint.lng) / 2,
+  };
 
   const isCompleted = order.status === 'COMPLETED';
   const isCanceled  = order.status === 'CANCELED';
@@ -169,32 +174,26 @@ export default function ActiveRideScreen() {
         </Text>
       </View>
 
-      {/* OSM map — centred between the driver and the target */}
+      {/* OSM map — shows driver position + both route endpoints */}
       <OsmMap
-        center={myLocation
-          ? { lat: (myLocation.lat + target.latitude) / 2, lng: (myLocation.lng + target.longitude) / 2 }
-          : { lat: target.latitude, lng: target.longitude }
-        }
-        zoom={myLocation ? 14 : 15}
+        center={routeCenter}
+        zoom={13}
         markers={[
-          // Driver's own position
+          // Driver's current position
           ...(myLocation
-            ? [{ lat: myLocation.lat, lng: myLocation.lng, label: '🚕 Вие', color: '#1a1a2e' }]
+            ? [{ lat: myLocation.lat, lng: myLocation.lng, label: 'Вие', color: '#1a1a2e' }]
             : []),
-          // Target (passenger or destination)
-          {
-            lat:   target.latitude,
-            lng:   target.longitude,
-            label: targetLabel,
-            color: isPickup ? '#4caf50' : '#f44336',
-          },
+          // Pickup point (green)
+          { lat: pickupPoint.lat, lng: pickupPoint.lng, label: 'Начало', color: '#4caf50' },
+          // Dropoff point (red)
+          { lat: dropoffPoint.lat, lng: dropoffPoint.lng, label: 'Дестинация', color: '#f44336' },
         ]}
         style={styles.map}
       />
 
       {/* Bottom panel */}
       <View style={styles.panel}>
-        <Text style={styles.addrLabel}>{targetLabel}</Text>
+        <Text style={styles.addrLabel}>{isPickup ? 'Вземи пътника от:' : 'Карай до:'}</Text>
         <Text style={styles.addr} numberOfLines={2}>{targetAddr}</Text>
 
         <View style={styles.priceRow}>

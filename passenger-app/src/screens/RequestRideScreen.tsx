@@ -136,7 +136,7 @@ export default function RequestRideScreen() {
           placeholder="напр. ул. Витоша 1, София"
           autoCorrect={false}
           autoComplete="off"
-          autoCapitalize="sentences"
+          autoCapitalize="none"
           value={pickup}
           onChangeText={setPickup}
           returnKeyType="next"
@@ -148,7 +148,7 @@ export default function RequestRideScreen() {
           placeholder="напр. Летище София"
           autoCorrect={false}
           autoComplete="off"
-          autoCapitalize="sentences"
+          autoCapitalize="none"
           value={dropoff}
           onChangeText={setDropoff}
           returnKeyType="done"
