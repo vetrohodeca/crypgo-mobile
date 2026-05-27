@@ -4,12 +4,17 @@
  * The passenger enters pickup and dropoff addresses.
  * Backend geocodes -> calculates route -> returns price.
  * After confirmation -> generatePreimage -> initiatePayment -> PaymentScreen.
+ *
+ * Layout:
+ *   - Scrollable content area (title + inputs / route details)
+ *   - Fixed bottom panel with the action button (never hidden by keyboard or dropdowns)
  */
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { ordersApi } from '@cryptgo/shared';
 import { generatePreimage } from '@/services/breez.service';
@@ -84,7 +89,7 @@ export default function RequestRideScreen() {
     }
   };
 
-  // UI
+  // ── Confirm step ──────────────────────────────────────────────────────────
 
   if (step === 'confirm' && order) {
     const priceEur = parseFloat(order.price_eur).toFixed(2);
@@ -92,80 +97,97 @@ export default function RequestRideScreen() {
     const mins     = Math.round(order.duration_seconds / 60);
 
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Потвърди курса</Text>
+      <SafeAreaView style={styles.container}>
+        {/* Scrollable details */}
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.title}>Потвърди курса</Text>
 
-        <View style={styles.card}>
-          <Row label="От:"   value={order.pickup_address} />
-          <Row label="До:"   value={order.dropoff_address} />
-          <Row label="Разстояние:" value={`${km} км`} />
-          <Row label="ETA:"  value={`~${mins} мин`} />
-          <View style={styles.divider} />
-          <Row label="Цена:" value={`${priceEur} EUR`} bold />
-          <Text style={styles.hint}>≈ {Math.round(parseFloat(priceEur) * 1200)} сатоши</Text>
+          <View style={styles.card}>
+            <Row label="От:"          value={order.pickup_address} />
+            <Row label="До:"          value={order.dropoff_address} />
+            <Row label="Разстояние:"  value={`${km} км`} />
+            <Row label="ETA:"         value={`~${mins} мин`} />
+            <View style={styles.divider} />
+            <Row label="Цена:" value={`${priceEur} EUR`} bold />
+            <Text style={styles.hint}>≈ {Math.round(parseFloat(priceEur) * 1200)} сатоши</Text>
+          </View>
+
+          <Text style={styles.secNote}>
+            🔒 Плащането е escrow — средствата се освобождават при пристигане.
+          </Text>
+        </ScrollView>
+
+        {/* Fixed bottom panel — always visible */}
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.btn} onPress={handleConfirmAndPay} disabled={loading}>
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.btnText}>Плати с Lightning ⚡</Text>
+            }
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.cancelBtn} onPress={() => setStep('input')}>
+            <Text style={styles.cancelText}>← Обратно</Text>
+          </TouchableOpacity>
         </View>
-
-        <Text style={styles.secNote}>
-          🔒 Плащането е escrow — средствата се освобождават при пристигане.
-        </Text>
-
-        <TouchableOpacity style={styles.btn} onPress={handleConfirmAndPay} disabled={loading}>
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnText}>Плати с Lightning ⚡</Text>
-          }
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.cancelBtn} onPress={() => setStep('input')}>
-          <Text style={styles.cancelText}>← Обратно</Text>
-        </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
+  // ── Input step ────────────────────────────────────────────────────────────
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Заяви курс</Text>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Scrollable form fields */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title}>Заяви курс</Text>
 
-        <Text style={styles.label}>Начален адрес</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="напр. ул. Витоша 1, София"
-          autoCorrect={false}
-          autoComplete="off"
-          autoCapitalize="none"
-          value={pickup}
-          onChangeText={setPickup}
-          returnKeyType="next"
-        />
+          <Text style={styles.label}>Начален адрес</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="напр. ул. Витоша 1, София"
+            autoCorrect={false}
+            autoComplete="off"
+            autoCapitalize="none"
+            value={pickup}
+            onChangeText={setPickup}
+            returnKeyType="next"
+          />
 
-        <Text style={styles.label}>Краен адрес</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="напр. Летище София"
-          autoCorrect={false}
-          autoComplete="off"
-          autoCapitalize="none"
-          value={dropoff}
-          onChangeText={setDropoff}
-          returnKeyType="done"
-          onSubmitEditing={handleCalculate}
-        />
+          <Text style={styles.label}>Краен адрес</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="напр. Летище София"
+            autoCorrect={false}
+            autoComplete="off"
+            autoCapitalize="none"
+            value={dropoff}
+            onChangeText={setDropoff}
+            returnKeyType="done"
+            onSubmitEditing={handleCalculate}
+          />
+        </ScrollView>
 
-        <TouchableOpacity style={styles.btn} onPress={handleCalculate} disabled={loading}>
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnText}>Изчисли маршрут →</Text>
-          }
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelText}>Отказ</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        {/* Fixed bottom panel — stays above the keyboard */}
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.btn} onPress={handleCalculate} disabled={loading}>
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.btnText}>Изчисли маршрут →</Text>
+            }
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.cancelText}>Отказ</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -179,20 +201,31 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 20, backgroundColor: '#fff' },
-  title:     { fontSize: 22, fontWeight: 'bold', color: '#333', marginBottom: 20 },
-  label:     { fontSize: 14, color: '#666', marginBottom: 4 },
+  container:     { flex: 1, backgroundColor: '#fff' },
+  scrollContent: { padding: 20 },
+
+  title: { fontSize: 22, fontWeight: 'bold', color: '#333', marginBottom: 20 },
+  label: { fontSize: 14, color: '#666', marginBottom: 4 },
   input: {
     borderWidth: 1, borderColor: '#ddd', borderRadius: 12,
     padding: 14, marginBottom: 16, fontSize: 16,
   },
+
   card: {
     backgroundColor: '#f9f9f9', borderRadius: 16,
     padding: 16, marginBottom: 16,
   },
-  divider:  { height: 1, backgroundColor: '#eee', marginVertical: 8 },
-  hint:     { textAlign: 'right', color: '#999', fontSize: 12, marginTop: 2 },
-  secNote:  { color: '#666', fontSize: 13, textAlign: 'center', marginBottom: 16 },
+  divider: { height: 1, backgroundColor: '#eee', marginVertical: 8 },
+  hint:    { textAlign: 'right', color: '#999', fontSize: 12, marginTop: 2 },
+  secNote: { color: '#666', fontSize: 13, textAlign: 'center', marginBottom: 16 },
+
+  // Fixed bottom panel — mirrors the driver app panel style
+  footer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
   btn: {
     backgroundColor: '#F7931A', borderRadius: 14,
     padding: 16, alignItems: 'center', marginBottom: 10,
