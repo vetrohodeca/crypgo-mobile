@@ -43,8 +43,17 @@ export default function ActiveRideScreen() {
     (async () => {
       const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
       if (status !== 'granted' || !mounted) return;
+
+      // Get an immediate fix so the marker appears right away
+      try {
+        const initial = await ExpoLocation.getCurrentPositionAsync(
+          { accuracy: ExpoLocation.Accuracy.Balanced },
+        );
+        if (mounted) setMyLocation({ lat: initial.coords.latitude, lng: initial.coords.longitude });
+      } catch { /* no fix yet — watcher will update when available */ }
+
       sub = await ExpoLocation.watchPositionAsync(
-        { accuracy: ExpoLocation.Accuracy.Balanced, timeInterval: 3_000, distanceInterval: 5 },
+        { accuracy: ExpoLocation.Accuracy.Balanced, timeInterval: 3_000, distanceInterval: 0 },
         (loc) => { if (mounted) setMyLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude }); },
       );
     })();

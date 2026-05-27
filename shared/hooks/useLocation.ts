@@ -65,11 +65,21 @@ export function useLocation({
   const startTracking = useCallback(async () => {
     if (!hasPermission || isTracking) return;
 
+    // Get an immediate fix before the watcher fires
+    try {
+      const initial = await ExpoLocation.getCurrentPositionAsync(
+        { accuracy: ExpoLocation.Accuracy.Balanced },
+      );
+      const initCoords = { lat: initial.coords.latitude, lng: initial.coords.longitude };
+      setCurrentLocation(initCoords);
+      onUpdate?.(initCoords);
+    } catch { /* no fix yet */ }
+
     watchRef.current = await ExpoLocation.watchPositionAsync(
       {
         accuracy: ExpoLocation.Accuracy.High,
         timeInterval: intervalMs,
-        distanceInterval: 5, // minimum 5m change
+        distanceInterval: 0, // fire on every interval regardless of movement
       },
       (location: ExpoLocation.LocationObject) => {
         const coords = {
