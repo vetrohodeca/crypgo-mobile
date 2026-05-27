@@ -32,7 +32,11 @@ interface OsmMapProps {
   markers?:       OsmMarker[];
   style?:         ViewStyle;
   onReady?:       () => void;
-  /** When provided, a "locate me" button appears over the map bottom-right corner. */
+  /**
+   * Pass the user's GPS position to show a "locate me" button (bottom-right).
+   * Button is visible whenever this prop is set (even null = GPS loading);
+   * it is disabled and greyed out until a real position arrives.
+   */
   locatePosition?: { lat: number; lng: number } | null;
 }
 
@@ -167,13 +171,19 @@ const OsmMap = forwardRef<OsmMapRef, OsmMapProps>(function OsmMap(
         showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
       />
-      {locatePosition && (
+      {locatePosition !== undefined && (
         <TouchableOpacity
-          style={styles.locateBtn}
-          onPress={() => inject({ type: 'panTo', lat: locatePosition.lat, lng: locatePosition.lng, zoom: 16 })}
-          activeOpacity={0.8}
+          style={[styles.locateBtn, !locatePosition && styles.locateBtnDisabled]}
+          onPress={() => {
+            if (locatePosition) {
+              inject({ type: 'panTo', lat: locatePosition.lat, lng: locatePosition.lng, zoom: 16 });
+            }
+          }}
+          activeOpacity={locatePosition ? 0.8 : 1}
         >
-          <Text style={styles.locateBtnText}>⊙</Text>
+          <Text style={[styles.locateBtnText, !locatePosition && styles.locateBtnTextDisabled]}>
+            ⊙
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -193,5 +203,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25, shadowRadius: 4, elevation: 5,
   },
-  locateBtnText: { fontSize: 22, color: '#1a1a2e', lineHeight: 26 },
+  locateBtnDisabled:     { backgroundColor: '#f0f0f0', shadowOpacity: 0.1, elevation: 1 },
+  locateBtnText:         { fontSize: 22, color: '#1a1a2e', lineHeight: 26 },
+  locateBtnTextDisabled: { color: '#bbb' },
 });
