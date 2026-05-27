@@ -67,6 +67,13 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: TaskMan
 // Start / Stop background tracking
 
 export async function startBackgroundTracking(): Promise<boolean> {
+  // Background location is not available in Expo Go on Android.
+  // Fall back to foreground-only tracking (watchPositionAsync in HomeScreen).
+  const bgAvailable = await Location.isBackgroundLocationAvailableAsync();
+  if (!bgAvailable) {
+    return false;
+  }
+
   const { status } = await Location.requestBackgroundPermissionsAsync();
   if (status !== 'granted') {
     console.warn('[BG Location] Background permission denied — using foreground');
