@@ -8,7 +8,7 @@
  * (except for the map tiles themselves, which require an internet connection).
  */
 import React, { useRef, useImperativeHandle, forwardRef, useMemo, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, View, Pressable, Text } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type { WebViewErrorEvent, WebViewHttpErrorEvent } from 'react-native-webview';
 import type { ViewStyle } from 'react-native';
@@ -172,19 +172,23 @@ const OsmMap = forwardRef<OsmMapRef, OsmMapProps>(function OsmMap(
         showsVerticalScrollIndicator={false}
       />
       {locatePosition !== undefined && (
-        <TouchableOpacity
-          style={[styles.locateBtn, !locatePosition && styles.locateBtnDisabled]}
+        <Pressable
+          style={({ pressed }) => [
+            styles.locateBtn,
+            !locatePosition && styles.locateBtnDisabled,
+            pressed && locatePosition && styles.locateBtnPressed,
+          ]}
+          disabled={!locatePosition}
           onPress={() => {
             if (locatePosition) {
               inject({ type: 'panTo', lat: locatePosition.lat, lng: locatePosition.lng, zoom: 16 });
             }
           }}
-          activeOpacity={locatePosition ? 0.8 : 1}
         >
           <Text style={[styles.locateBtnText, !locatePosition && styles.locateBtnTextDisabled]}>
             ⊙
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );
@@ -204,6 +208,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25, shadowRadius: 4, elevation: 5,
   },
   locateBtnDisabled:     { backgroundColor: '#f0f0f0', shadowOpacity: 0.1, elevation: 1 },
+  locateBtnPressed:      { backgroundColor: '#e0e0e0' },
   locateBtnText:         { fontSize: 22, color: '#1a1a2e', lineHeight: 26 },
   locateBtnTextDisabled: { color: '#bbb' },
 });
