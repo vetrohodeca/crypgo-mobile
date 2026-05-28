@@ -61,6 +61,12 @@ export default function FeedbackScreen() {
     setPickerOpen(false);
   }, []);
 
+  // App feedback is not tied to a specific order — clear any linked order.
+  const selectCategory = useCallback((value: FeedbackCategory) => {
+    setCategory(value);
+    if (value === 'APP_FEEDBACK') setLinkedOrder(null);
+  }, []);
+
   const submit = useCallback(async () => {
     const t = title.trim();
     const b = body.trim();
@@ -104,7 +110,7 @@ export default function FeedbackScreen() {
             <TouchableOpacity
               key={c.value}
               style={[styles.chip, active && styles.chipActive]}
-              onPress={() => setCategory(c.value)}
+              onPress={() => selectCategory(c.value)}
             >
               <Text style={[styles.chipText, active && styles.chipTextActive]}>
                 {c.label}
@@ -138,26 +144,30 @@ export default function FeedbackScreen() {
         textAlignVertical="top"
       />
 
-      {/* ── Optional order link ───────────────────────────────────── */}
-      <Text style={styles.label}>Свързана поръчка (по избор)</Text>
-      {linkedOrder ? (
-        <View style={styles.linkedCard}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.linkedRoute} numberOfLines={1}>
-              {linkedOrder.pickup_address} → {linkedOrder.dropoff_address}
-            </Text>
-            <Text style={styles.linkedMeta}>
-              {formatOrderDate(linkedOrder.created_at)} · {linkedOrder.status}
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => setLinkedOrder(null)}>
-            <Text style={styles.clearLink}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <TouchableOpacity style={styles.linkBtn} onPress={openPicker}>
-          <Text style={styles.linkBtnText}>+ Свържи поръчка</Text>
-        </TouchableOpacity>
+      {/* ── Optional order link (not shown for app feedback) ──────── */}
+      {category !== 'APP_FEEDBACK' && (
+        <>
+          <Text style={styles.label}>Свързана поръчка (по избор)</Text>
+          {linkedOrder ? (
+            <View style={styles.linkedCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.linkedRoute} numberOfLines={1}>
+                  {linkedOrder.pickup_address} → {linkedOrder.dropoff_address}
+                </Text>
+                <Text style={styles.linkedMeta}>
+                  {formatOrderDate(linkedOrder.created_at)} · {linkedOrder.status}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setLinkedOrder(null)}>
+                <Text style={styles.clearLink}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.linkBtn} onPress={openPicker}>
+              <Text style={styles.linkBtnText}>+ Свържи поръчка</Text>
+            </TouchableOpacity>
+          )}
+        </>
       )}
 
       {/* ── Submit ────────────────────────────────────────────────── */}
