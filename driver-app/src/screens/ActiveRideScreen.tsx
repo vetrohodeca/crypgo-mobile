@@ -61,6 +61,10 @@ export default function ActiveRideScreen() {
     return () => { mounted = false; sub?.remove(); };
   }, []);
 
+  // Tracks previous cancel_requested_at so we can detect when the passenger
+  // refuses (transition from set -> null while still IN_PROGRESS).
+  const prevCancelRequestedRef = useRef<string | null>(null);
+
   // Poll order status
   useEffect(() => {
     let mounted = true;
@@ -69,6 +73,18 @@ export default function ActiveRideScreen() {
       try {
         const o = await ordersApi.findOne(params.orderId);
         if (!mounted) return;
+
+        // Detect passenger response to a pending cancel request
+        const prev = prevCancelRequestedRef.current;
+        const curr = o.cancel_requested_at;
+        if (prev && !curr && o.status === 'IN_PROGRESS') {
+          Alert.alert(
+            'Пътникът отказа',
+            'Пътникът не потвърди анулирането. Моля, продължете курса.',
+          );
+        }
+        prevCancelRequestedRef.current = curr;
+
         setOrder(o);
         setActiveOrder(o);
 
@@ -103,7 +119,7 @@ export default function ActiveRideScreen() {
     }
   };
 
-  // Cancel by driver
+  // Cancel by driver — direct (ACCEPTED, before pickup)
   const handleCancel = () => {
     Alert.alert('Анулиране', 'Сигурни ли сте?', [
       { text: 'Не', style: 'cancel' },
@@ -123,6 +139,32 @@ export default function ActiveRideScreen() {
         },
       },
     ]);
+  };
+
+  // Request cancel during IN_PROGRESS — passenger must approve
+  const handleRequestCancel = () => {
+    Alert.alert(
+      'Заявка за анулиране',
+      'Пътникът трябва да потвърди анулирането. Сигурни ли сте?',
+      [
+        { text: 'Не', style: 'cancel' },
+        {
+          text: 'Да, заявявам',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ordersApi.requestCancel(params.orderId);
+              Alert.alert(
+                'Заявката е изпратена',
+                'Чакаме пътникът да потвърди. Ще ви известим когато отговори.',
+              );
+            } catch (e: any) {
+              Alert.alert('Грешка', e?.response?.data?.message ?? 'Грешка при заявката.');
+            }
+          },
+        },
+      ],
+    );
   };
 
   if (loading || !order) {
@@ -225,6 +267,21 @@ export default function ActiveRideScreen() {
           </View>
         )}
 
+        {/* IN_PROGRESS: driver may request cancel — passenger must approve */}
+        {!isPickup && order.cancel_requested_at && (
+          <View style={styles.pendingCancelBox}>
+            <Text style={styles.pendingCancelText}>
+              ⏳ Чакаме отговор от пътника за заявеното анулиране...
+            </Text>
+          </View>
+        )}
+
+        {!isPickup && !order.cancel_requested_at && (
+          <TouchableOpacity style={styles.cancelLink} onPress={handleRequestCancel}>
+            <Text style={styles.cancelLinkText}>Заяви анулиране (изисква потвърждение)</Text>
+          </TouchableOpacity>
+        )}
+
         {isPickup && (
           <TouchableOpacity style={styles.cancelLink} onPress={handleCancel}>
             <Text style={styles.cancelLinkText}>Анулирай поръчката</Text>
@@ -262,6 +319,15 @@ const styles = StyleSheet.create({
   waitText: { color: '#555', fontSize: 14, flex: 1 },
   cancelLink:     { alignItems: 'center', marginTop: 6 },
   cancelLinkText: { color: '#f44336', fontSize: 13 },
+  pendingCancelBox: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#fff3e0',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ffb74d',
+  },
+  pendingCancelText: { color: '#e65100', fontSize: 13, textAlign: 'center', fontWeight: '600' },
   // Done screen styles
   doneContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, backgroundColor: '#fff' },
   doneIcon:      { fontSize: 64, marginBottom: 16 },

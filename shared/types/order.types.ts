@@ -36,6 +36,8 @@ export interface Order {
   duration_seconds: number;
   price_eur: string; // Decimal serialised as string
   status: OrderStatus;
+  /** ISO timestamp when the driver requested cancel during IN_PROGRESS; null otherwise. */
+  cancel_requested_at: string | null;
   created_at: string;
   updated_at: string;
   transaction: Transaction | null;

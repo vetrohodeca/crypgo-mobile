@@ -86,6 +86,10 @@ export default function TrackingScreen() {
     });
   }, [params.orderId]);
 
+  // Tracks whether we've already shown the cancel-request dialog
+  // (the request stays on the order until the passenger responds).
+  const cancelDialogShownRef = useRef(false);
+
   // Polling — order status (every 3 seconds)
   useEffect(() => {
     mountedRef.current = true;
@@ -95,6 +99,52 @@ export default function TrackingScreen() {
         const o = await ordersApi.findOne(params.orderId);
         if (!mountedRef.current) return;
         setCurrentOrder(o);
+
+        // Driver requested cancel during IN_PROGRESS — prompt passenger ONCE
+        if (
+          o.status === 'IN_PROGRESS' &&
+          o.cancel_requested_at &&
+          !cancelDialogShownRef.current
+        ) {
+          cancelDialogShownRef.current = true;
+          Alert.alert(
+            'Шофьорът иска да анулира',
+            'Шофьорът поиска анулиране на курса. Ако потвърдите, плащането ще бъде върнато. Ако откажете, курсът продължава.',
+            [
+              {
+                text: 'Откажи (продължи курса)',
+                style: 'cancel',
+                onPress: async () => {
+                  try {
+                    await ordersApi.respondCancel(params.orderId, false);
+                    // Re-arm so a future request triggers another prompt
+                    cancelDialogShownRef.current = false;
+                  } catch (err: any) {
+                    Alert.alert('Грешка', err?.response?.data?.message ?? 'Грешка при отговор.');
+                    cancelDialogShownRef.current = false;
+                  }
+                },
+              },
+              {
+                text: 'Потвърди анулиране',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await ordersApi.respondCancel(params.orderId, true);
+                  } catch (err: any) {
+                    Alert.alert('Грешка', err?.response?.data?.message ?? 'Грешка при отговор.');
+                    cancelDialogShownRef.current = false;
+                  }
+                },
+              },
+            ],
+            { cancelable: false },
+          );
+        }
+        // If the request was cleared (driver's request changed), re-arm
+        if (!o.cancel_requested_at) {
+          cancelDialogShownRef.current = false;
+        }
 
         if (o.status === 'COMPLETED') {
           clearInterval(intervalId);

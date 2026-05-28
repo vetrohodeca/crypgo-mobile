@@ -18,6 +18,8 @@ export const ordersApi = {
   initiatePayment: (id: string, dto: InitiatePaymentDto)          => post<InitiatePaymentResponse>(`/orders/${id}/payment`, dto),
   complete:        (id: string, dto: RevealPreimageDto)           => patch<Order>(`/orders/${id}/complete`, dto),
   cancelByPassenger: (id: string)                                  => patch<Order>(`/orders/${id}/cancel`),
+  /** Passenger responds to driver's IN_PROGRESS cancel request */
+  respondCancel:   (id: string, approve: boolean)                  => patch<Order>(`/orders/${id}/respond-cancel`, { approve }),
   myOrders:        ()                                              => get<Order[]>('/orders/my'),
   findOne:         (id: string)                                    => get<Order>(`/orders/${id}`),
 
@@ -27,4 +29,6 @@ export const ordersApi = {
   accept:          (id: string)                                    => patch<Order>(`/orders/${id}/accept`),
   start:           (id: string)                                    => patch<Order>(`/orders/${id}/start`),
   cancelByDriver:  (id: string)                                    => patch<Order>(`/orders/${id}/driver-cancel`),
+  /** Driver requests cancel during IN_PROGRESS — passenger must approve */
+  requestCancel:   (id: string)                                    => patch<Order>(`/orders/${id}/request-cancel`),
 };
