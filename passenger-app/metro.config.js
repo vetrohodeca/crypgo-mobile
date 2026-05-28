@@ -2,7 +2,7 @@ const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
 const projectRoot  = __dirname;
-const workspaceRoot = path.resolve(projectRoot, '..');   // cryptgo-mobile/
+const workspaceRoot = path.resolve(projectRoot, '..');   // crypgo-mobile/
 
 const config = getDefaultConfig(projectRoot);
 
@@ -16,7 +16,7 @@ config.resolver.nodeModulesPaths = [
 ];
 
 // Force React (and its sub-paths) to always resolve from THIS app's node_modules,
-// not from cryptgo-mobile/node_modules/react found via hierarchical walk from
+// not from crypgo-mobile/node_modules/react found via hierarchical walk from
 // the ../shared/ directory. Two React instances in one bundle crash with
 // "property is not writable" + "Cannot read property 'default' of undefined".
 //
