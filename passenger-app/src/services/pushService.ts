@@ -7,26 +7,26 @@
  *   3. Configure an Android notification channel.
  *   4. Set the global notification handler (how alerts appear in foreground).
  *
- * Usage:
- *   Call registerForPushNotifications() once after login; the returned token
- *   is sent to the backend via notificationsApi.registerToken().
- *
- * Note: Expo push notifications require a development build. Remote push was
- * removed from Expo Go in SDK 53. This module detects Expo Go and skips all
- * push setup gracefully — the rest of the app works normally.
+ * Expo Go note:
+ *   Remote push was removed from Expo Go in SDK 53. A static top-level
+ *   `import * as Notifications from 'expo-notifications'` causes the module
+ *   to call addPushTokenListener at load time, which throws immediately in
+ *   Expo Go. We use a conditional require() so the module never initialises
+ *   in the Expo Go runtime.
  */
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+// `import type` is erased at compile time — zero runtime cost, safe in Expo Go.
+import type * as NotificationsNS from 'expo-notifications';
+import type * as DeviceNS from 'expo-device';
 
-// Expo Go (storeClient) does not support remote push since SDK 53.
-// Skip all push setup to avoid the runtime error.
 const IS_EXPO_GO = Constants.executionEnvironment === 'storeClient';
 
 if (!IS_EXPO_GO) {
-  // ── Foreground handler ──────────────────────────────────────────
-  // Show alert + badge + sound even when the app is in the foreground.
+  // Lazy require — expo-notifications module code runs only here, never in Expo Go.
+  const Notifications = require('expo-notifications') as typeof NotificationsNS;
+
+  // ── Foreground handler ────────────────────────────────────────────
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -37,7 +37,7 @@ if (!IS_EXPO_GO) {
     }),
   });
 
-  // ── Android default channel ──────────────────────────────────────
+  // ── Android default channel ────────────────────────────────────────
   if (Platform.OS === 'android') {
     Notifications.setNotificationChannelAsync('default', {
       name: 'CrypGo',
@@ -58,10 +58,13 @@ export async function registerForPushNotifications(): Promise<string | null> {
     return null;
   }
 
+  const Device = require('expo-device') as typeof DeviceNS;
   if (!Device.isDevice) {
     if (__DEV__) console.log('[Push] Skipped: not a physical device');
     return null;
   }
+
+  const Notifications = require('expo-notifications') as typeof NotificationsNS;
 
   const { status: existing } = await Notifications.getPermissionsAsync();
   let finalStatus = existing;
