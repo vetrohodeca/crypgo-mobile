@@ -18,11 +18,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ordersApi } from '@cryptgo/shared';
+import { ordersApi } from '@crypgo/shared';
 import { generatePreimage } from '@/services/breez.service';
 import { savePreimage }    from '@/services/preimageService';
 import { useOrderStore }    from '@/store/useOrderStore';
-import { useLocation }      from '@cryptgo/shared';
+import { useLocation }      from '@crypgo/shared';
 import type { AppNavProp, RequestRideRouteProp } from '@/navigation/types';
 
 export default function RequestRideScreen() {

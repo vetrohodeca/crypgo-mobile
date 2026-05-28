@@ -16,9 +16,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { ordersApi, OsmMap } from '@cryptgo/shared';
-import type { OsmMapRef, OsmMarker } from '@cryptgo/shared';
-import { useWebSocket } from '@cryptgo/shared';
+import { ordersApi, OsmMap } from '@crypgo/shared';
+import type { OsmMapRef, OsmMarker } from '@crypgo/shared';
+import { useWebSocket } from '@crypgo/shared';
 import * as ExpoLocation from 'expo-location';
 import { useAuthStore }  from '@/store/useAuthStore';
 import { useOrderStore } from '@/store/useOrderStore';

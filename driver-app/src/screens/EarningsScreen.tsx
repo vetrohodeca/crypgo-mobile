@@ -5,8 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { ordersApi } from '@cryptgo/shared';
-import type { Order } from '@cryptgo/shared';
+import { ordersApi } from '@crypgo/shared';
+import type { Order } from '@crypgo/shared';
 import type { AppNavProp } from '@/navigation/types';
 
 const ACTIVE_STATUSES  = new Set(['ACCEPTED', 'IN_PROGRESS']);

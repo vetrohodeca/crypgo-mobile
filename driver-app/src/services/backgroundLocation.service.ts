@@ -14,9 +14,9 @@
 import * as Location    from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { io, Socket }   from 'socket.io-client';
-import { API_BASE_URL } from '@cryptgo/shared';
+import { API_BASE_URL } from '@crypgo/shared';
 
-export const BACKGROUND_LOCATION_TASK = 'CRYPTGO_DRIVER_LOCATION';
+export const BACKGROUND_LOCATION_TASK = 'crypgo_DRIVER_LOCATION';
 
 // Socket instance — shared between foreground and background
 let _socket: Socket | null = null;

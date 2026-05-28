@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { locationApi, OsmMap } from '@cryptgo/shared';
-import type { NearestDriverResult, OsmMapRef } from '@cryptgo/shared';
-import { useLocation }   from '@cryptgo/shared';
+import { locationApi, OsmMap } from '@crypgo/shared';
+import type { NearestDriverResult, OsmMapRef } from '@crypgo/shared';
+import { useLocation }   from '@crypgo/shared';
 import { useAuthStore }  from '@/store/useAuthStore';
 import { useOrderStore } from '@/store/useOrderStore';
 import type { AppNavProp } from '@/navigation/types';

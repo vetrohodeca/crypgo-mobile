@@ -15,7 +15,7 @@ import {
   ActivityIndicator, Alert, ScrollView, Clipboard,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { ordersApi } from '@cryptgo/shared';
+import { ordersApi } from '@crypgo/shared';
 import { payBolt11Invoice } from '@/services/breez.service';
 import { useOrderStore }    from '@/store/useOrderStore';
 import type { AppStackParamList, AppNavProp } from '@/navigation/types';

@@ -21,8 +21,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import * as ExpoLocation from 'expo-location';
-import { OsmMap, mapsApi } from '@cryptgo/shared';
-import type { OsmMapRef } from '@cryptgo/shared';
+import { OsmMap, mapsApi } from '@crypgo/shared';
+import type { OsmMapRef } from '@crypgo/shared';
 import type { AppNavProp, AppStackParamList } from '@/navigation/types';
 
 type MapPickerRouteProp = RouteProp<AppStackParamList, 'MapPicker'>;

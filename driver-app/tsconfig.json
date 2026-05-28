@@ -5,8 +5,8 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@cryptgo/shared":   ["../shared/index.ts"],
-      "@cryptgo/shared/*": ["../shared/*"],
+      "@crypgo/shared":   ["../shared/index.ts"],
+      "@crypgo/shared/*": ["../shared/*"],
       "@/*":               ["src/*"]
     }
   }

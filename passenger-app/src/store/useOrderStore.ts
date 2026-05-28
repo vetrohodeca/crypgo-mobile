@@ -6,7 +6,7 @@
  *   - pendingInvoice: BOLT11 + preimage (on the device only!)
  */
 import { create } from 'zustand';
-import type { Order, InitiatePaymentResponse } from '@cryptgo/shared';
+import type { Order, InitiatePaymentResponse } from '@crypgo/shared';
 
 interface PendingInvoice {
   bolt11:      string;   // BOLT11 invoice for payment

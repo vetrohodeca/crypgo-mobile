@@ -1,15 +1,15 @@
 {
   "expo": {
     "name": "CrypGo Driver",
-    "slug": "cryptgo-driver",
+    "slug": "crypgo-driver",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "cryptgo-driver",
+    "scheme": "crypgo-driver",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "bg.cryptgo.driver",
+      "bundleIdentifier": "bg.crypgo.driver",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "CrypGo Driver използва GPS за да стриймва позицията ви към пътниците.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "CrypGo Driver използва GPS на заден план за да следи активния курс.",
@@ -17,7 +17,7 @@
       }
     },
     "android": {
-      "package": "bg.cryptgo.driver",
+      "package": "bg.crypgo.driver",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#1a1a2e"
@@ -55,7 +55,7 @@
     "extra": {
       "apiBaseUrl": "http://10.0.2.2:3000",
       "eas": {
-        "projectId": "cryptgo-driver"
+        "projectId": "crypgo-driver"
       }
     }
   }

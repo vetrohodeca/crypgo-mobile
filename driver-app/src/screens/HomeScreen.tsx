@@ -14,8 +14,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { useLocation, OsmMap } from '@cryptgo/shared';
-import type { OsmMarker } from '@cryptgo/shared';
+import { useLocation, OsmMap } from '@crypgo/shared';
+import type { OsmMarker } from '@crypgo/shared';
 import { useAuthStore }  from '@/store/useAuthStore';
 import { useDriverStore } from '@/store/useDriverStore';
 import {

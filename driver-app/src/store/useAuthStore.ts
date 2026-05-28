@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { configureApiClient } from '@cryptgo/shared';
+import { configureApiClient } from '@crypgo/shared';
 
 interface AuthUser {
   id: string;

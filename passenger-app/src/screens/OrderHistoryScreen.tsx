@@ -5,8 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { ordersApi } from '@cryptgo/shared';
-import type { Order, OrderStatus } from '@cryptgo/shared';
+import { ordersApi } from '@crypgo/shared';
+import type { Order, OrderStatus } from '@crypgo/shared';
 import { useOrderStore } from '@/store/useOrderStore';
 import type { AppNavProp } from '@/navigation/types';
 

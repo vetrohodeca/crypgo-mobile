@@ -69,7 +69,7 @@ docker compose up -d postgres redis
 ### Terminal 2 — NestJS backend
 
 ```bash
-cd cryptgo-backend
+cd crypgo-backend
 npm run start:dev
 ```
 
@@ -102,7 +102,7 @@ adb reverse tcp:8082 tcp:8082   # driver-app
 ### Terminal 5 — Passenger App
 
 ```powershell
-cd cryptgo-mobile/passenger-app
+cd crypgo-mobile/passenger-app
 npx expo start --android
 ```
 
@@ -113,7 +113,7 @@ Expo detects the running emulator and installs the app automatically.
 Open a second terminal:
 
 ```powershell
-cd cryptgo-mobile/driver-app
+cd crypgo-mobile/driver-app
 npx expo start --android --port 8082
 ```
 
@@ -187,11 +187,11 @@ Then press `r` in each Metro terminal to reload the bundle.
 persists, copy the message from the red screen and check the terminal for the full stack trace.
 
 **`TypeError: property is not writable` crash** — two copies of React were loaded from
-different `node_modules` directories. Make sure `cryptgo-mobile/node_modules/react` does
+different `node_modules` directories. Make sure `crypgo-mobile/node_modules/react` does
 **not** exist (only the apps' own copies should). Delete it if present:
 
 ```powershell
-Remove-Item -Recurse -Force "cryptgo-mobile\node_modules\react"
+Remove-Item -Recurse -Force "crypgo-mobile\node_modules\react"
 ```
 
 Then restart Metro with `--clear`.

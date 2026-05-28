@@ -9,8 +9,8 @@
  * activeOrderId: the currently accepted order (null = none)
  */
 import { create } from 'zustand';
-import type { DriverStatus, Order } from '@cryptgo/shared';
-import { apiClient } from '@cryptgo/shared';
+import type { DriverStatus, Order } from '@crypgo/shared';
+import { apiClient } from '@crypgo/shared';
 
 interface DriverState {
   status:        DriverStatus;

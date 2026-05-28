@@ -1,5 +1,5 @@
 {
-  "name": "@cryptgo/shared",
+  "name": "@crypgo/shared",
   "version": "1.0.0",
   "description": "CrypGo shared types, API client and hooks",
   "private": true,

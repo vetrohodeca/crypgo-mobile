@@ -9,7 +9,7 @@ import { useAuthStore }         from './src/store/useAuthStore';
 import AuthNavigator            from './src/navigation/AuthNavigator';
 import AppNavigator             from './src/navigation/AppNavigator';
 import { registerForPushNotifications } from './src/services/pushService';
-import { notificationsApi }     from '@cryptgo/shared';
+import { notificationsApi }     from '@crypgo/shared';
 import type { AppStackParamList } from './src/navigation/types';
 
 // ── Suppress known Expo SDK 56 / RN 0.76 Fabric renderer warnings ──────────

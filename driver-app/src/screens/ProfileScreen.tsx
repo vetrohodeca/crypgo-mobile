@@ -9,8 +9,8 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { driversApi } from '@cryptgo/shared';
-import type { Driver } from '@cryptgo/shared';
+import { driversApi } from '@crypgo/shared';
+import type { Driver } from '@crypgo/shared';
 import { useAuthStore } from '../store/useAuthStore';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

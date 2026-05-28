@@ -1,4 +1,4 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 /**
  * leaflet-bundle.ts — Leaflet 1.9.4 JS and CSS embedded as string constants.
  *

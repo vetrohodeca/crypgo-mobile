@@ -9,8 +9,8 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { usersApi } from '@cryptgo/shared';
-import type { User } from '@cryptgo/shared';
+import { usersApi } from '@crypgo/shared';
+import type { User } from '@crypgo/shared';
 import { useAuthStore } from '../store/useAuthStore';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -17,11 +17,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { ordersApi, OsmMap } from '@cryptgo/shared';
+import { ordersApi, OsmMap } from '@crypgo/shared';
 import * as ExpoLocation from 'expo-location';
 import { useDriverStore } from '@/store/useDriverStore';
 import { setActiveOrderId } from '@/services/backgroundLocation.service';
-import type { Order, OrderStatus } from '@cryptgo/shared';
+import type { Order, OrderStatus } from '@crypgo/shared';
 import type { AppStackParamList, AppNavProp } from '@/navigation/types';
 
 type Route = RouteProp<AppStackParamList, 'OrderDetail'>;

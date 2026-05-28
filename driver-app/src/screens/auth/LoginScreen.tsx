@@ -4,7 +4,7 @@ import {
   ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { authApi }       from '@cryptgo/shared';
+import { authApi }       from '@crypgo/shared';
 import { useAuthStore }  from '@/store/useAuthStore';
 import { initDriverSocket } from '@/services/backgroundLocation.service';
 import type { AuthNavProp } from '@/navigation/types';
