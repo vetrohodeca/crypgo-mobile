@@ -38,6 +38,7 @@ export type AppStackParamList = {
   MapPicker:   { field: 'pickup' | 'dropoff'; initialCoords?: { lat: number; lng: number } };
   Payment:     { orderId: string };
   Tracking:    { orderId: string };
+  Feedback:    undefined;
 };
 
 // Navigation prop shortcuts

@@ -9,9 +9,11 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { driversApi } from '@crypgo/shared';
 import type { Driver } from '@crypgo/shared';
 import { useAuthStore } from '../store/useAuthStore';
+import type { AppNavProp } from '../navigation/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,7 @@ function formatRating(rating: number | null | undefined): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<AppNavProp>();
   const logout = useAuthStore((s) => s.logout);
 
   const [driver, setDriver]         = useState<Driver | null>(null);
@@ -235,6 +238,14 @@ export default function ProfileScreen() {
           </>
         )}
       </View>
+
+      {/* ── Feedback ───────────────────────────────────────────────── */}
+      <TouchableOpacity
+        style={styles.feedbackButton}
+        onPress={() => navigation.navigate('Feedback')}
+      >
+        <Text style={styles.feedbackText}>✉️ Обратна връзка</Text>
+      </TouchableOpacity>
 
       {/* ── Logout ─────────────────────────────────────────────────── */}
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -441,6 +452,22 @@ const styles = StyleSheet.create({
     color: '#555',
     fontWeight: '600',
     fontSize: 15,
+  },
+
+  // Feedback
+  feedbackButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#e67e22',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  feedbackText: {
+    color: '#e67e22',
+    fontWeight: '700',
+    fontSize: 16,
   },
 
   // Logout

@@ -9,6 +9,7 @@ import RequestRideScreen  from '@/screens/RequestRideScreen';
 import MapPickerScreen    from '@/screens/MapPickerScreen';
 import PaymentScreen      from '@/screens/PaymentScreen';
 import TrackingScreen     from '@/screens/TrackingScreen';
+import FeedbackScreen     from '@/screens/FeedbackScreen';
 
 const Tab   = createBottomTabNavigator<AppTabParamList>();
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -56,6 +57,7 @@ export default function AppNavigator() {
       />
       <Stack.Screen name="Payment"  component={PaymentScreen} />
       <Stack.Screen name="Tracking" component={TrackingScreen} />
+      <Stack.Screen name="Feedback" component={FeedbackScreen} />
     </Stack.Navigator>
   );
 }

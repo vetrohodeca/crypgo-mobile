@@ -6,4 +6,5 @@ export { mapsApi }     from './maps.api';
 export { driversApi }  from './drivers.api';
 export { usersApi }         from './users.api';
 export { notificationsApi } from './notifications.api';
+export { feedbackApi }      from './feedback.api';
 export type { ReverseGeocodeResult } from './maps.api';

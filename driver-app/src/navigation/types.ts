@@ -17,6 +17,7 @@ export type AppStackParamList = {
   Tabs:        undefined;
   OrderDetail: { orderId: string; readOnly?: boolean };   // Order detail before accepting / history
   ActiveRide:  { orderId: string };                       // Active ride
+  Feedback:    undefined;                                 // Feedback form
 };
 
 export type AuthNavProp  = NativeStackNavigationProp<AuthStackParamList>;

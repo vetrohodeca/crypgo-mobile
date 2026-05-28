@@ -8,6 +8,7 @@ import EarningsScreen       from '@/screens/EarningsScreen';
 import ProfileScreen        from '@/screens/ProfileScreen';
 import OrderDetailScreen    from '@/screens/OrderDetailScreen';
 import ActiveRideScreen     from '@/screens/ActiveRideScreen';
+import FeedbackScreen       from '@/screens/FeedbackScreen';
 
 const Tab   = createBottomTabNavigator<AppTabParamList>();
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -35,6 +36,7 @@ export default function AppNavigator() {
       <Stack.Screen name="OrderDetail" component={OrderDetailScreen}
         options={{ presentation: 'modal' }} />
       <Stack.Screen name="ActiveRide"  component={ActiveRideScreen} />
+      <Stack.Screen name="Feedback"    component={FeedbackScreen} />
     </Stack.Navigator>
   );
 }

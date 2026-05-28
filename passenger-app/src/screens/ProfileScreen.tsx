@@ -9,9 +9,11 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { usersApi } from '@crypgo/shared';
 import type { User } from '@crypgo/shared';
 import { useAuthStore } from '../store/useAuthStore';
+import type { AppNavProp } from '../navigation/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -52,6 +54,7 @@ type EditSection = 'none' | 'name' | 'ln_node';
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<AppNavProp>();
   const logout     = useAuthStore((s) => s.logout);
   const updateUser = useAuthStore((s) => s.updateUser);
 
@@ -308,6 +311,14 @@ export default function ProfileScreen() {
           )
         )}
       </View>
+
+      {/* ── Feedback ───────────────────────────────────────────────── */}
+      <TouchableOpacity
+        style={styles.feedbackButton}
+        onPress={() => navigation.navigate('Feedback')}
+      >
+        <Text style={styles.feedbackText}>✉️ Обратна връзка</Text>
+      </TouchableOpacity>
 
       {/* ── Logout ─────────────────────────────────────────────────── */}
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -578,6 +589,22 @@ const styles = StyleSheet.create({
     color: '#555',
     fontWeight: '600',
     fontSize: 15,
+  },
+
+  // Feedback
+  feedbackButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: ORANGE,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  feedbackText: {
+    color: ORANGE,
+    fontWeight: '700',
+    fontSize: 16,
   },
 
   // Logout
