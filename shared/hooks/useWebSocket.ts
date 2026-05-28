@@ -20,7 +20,10 @@ interface UseWebSocketOptions {
     lng: number;
     timestamp: number;
   }) => void;
+  /** Dropoff arrival — passenger confirms completion */
   onOrderArrived?: (data: { orderId: string; driverId: string }) => void;
+  /** Pickup arrival — driver is outside waiting for the passenger */
+  onDriverAtPickup?: (data: { orderId: string; driverId: string }) => void;
   onError?: (data: { message: string }) => void;
 }
 
@@ -28,6 +31,7 @@ export function useWebSocket({
   token,
   onDriverLocation,
   onOrderArrived,
+  onDriverAtPickup,
   onError,
 }: UseWebSocketOptions) {
   const socketRef = useRef<Socket | null>(null);
@@ -54,13 +58,15 @@ export function useWebSocket({
     socket.on('connect',    () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
 
-    if (onDriverLocation) socket.on('driver:location', onDriverLocation);
-    if (onOrderArrived)   socket.on('order:arrived',   onOrderArrived);
-    if (onError)          socket.on('error',           onError);
+    if (onDriverLocation) socket.on('driver:location',      onDriverLocation);
+    if (onOrderArrived)   socket.on('order:arrived',        onOrderArrived);
+    if (onDriverAtPickup) socket.on('order:driver-at-pickup', onDriverAtPickup);
+    if (onError)          socket.on('error',                onError);
 
     return () => {
       socket.off('driver:location');
       socket.off('order:arrived');
+      socket.off('order:driver-at-pickup');
       socket.off('error');
       socket.disconnect();
       socketRef.current = null;

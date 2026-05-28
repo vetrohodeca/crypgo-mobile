@@ -177,6 +177,16 @@ export default function TrackingScreen() {
         Alert.alert('🏁 Пристигнахте!', 'Потвърдете завършването.');
       }
     }, [params.orderId]),
+    // Driver arrived at pickup — passenger may be inside a building
+    onDriverAtPickup: useCallback((data) => {
+      if (data.orderId === params.orderId) {
+        Alert.alert(
+          '🚗 Шофьорът пристигна!',
+          'Вашият шофьор чака пред сградата. Моля, излезте.',
+          [{ text: 'OK' }],
+        );
+      }
+    }, [params.orderId]),
   });
 
   useEffect(() => {

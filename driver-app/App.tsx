@@ -1,31 +1,77 @@
 import 'react-native-screens';
-import React from 'react';
-import { LogBox } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useRef } from 'react';
+import { LogBox, Platform } from 'react-native';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider }     from 'react-native-safe-area-context';
 import { StatusBar }            from 'expo-status-bar';
+import * as Notifications       from 'expo-notifications';
 import { useAuthStore }         from './src/store/useAuthStore';
 import AuthNavigator            from './src/navigation/AuthNavigator';
 import AppNavigator             from './src/navigation/AppNavigator';
+import { registerForPushNotifications } from './src/services/pushService';
+import { notificationsApi }     from '@cryptgo/shared';
+import type { AppStackParamList } from './src/navigation/types';
 
 // ── Suppress known Expo Go / RN 0.76 framework warnings ───────────────────
 LogBox.ignoreLogs([
-  // Fabric renderer race condition with React Navigation animations.
-  // Does not affect runtime behaviour; cannot be fixed in user code.
   'createAnimatedNode: Animated node',
-
-  // Background location is intentionally unavailable in Expo Go on Android.
-  // The driver app uses foreground watchPositionAsync for the demo; background
-  // tracking (expo-task-manager) only activates in a production / dev-client build.
   'Background location is limited in Expo Go',
 ]);
 
 export default function App() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const pushTokenRef = useRef<string | null>(null);
+  const navRef = useRef<NavigationContainerRef<AppStackParamList>>(null);
+
+  // ── Register push token on login ──────────────────────────────
+  useEffect(() => {
+    if (!isLoggedIn) {
+      // On logout: unregister the token
+      if (pushTokenRef.current) {
+        notificationsApi
+          .removeToken(pushTokenRef.current)
+          .catch(() => undefined);
+        pushTokenRef.current = null;
+      }
+      return;
+    }
+
+    // On login: get the Expo push token and register with the backend
+    registerForPushNotifications().then((token) => {
+      if (!token) return;
+      pushTokenRef.current = token;
+      const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+      notificationsApi
+        .registerToken(token, platform)
+        .catch(() => undefined);
+    });
+  }, [isLoggedIn]);
+
+  // ── Tap handler: navigate to the relevant screen ──────────────
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as {
+          type?: string;
+          orderId?: string;
+        };
+        if (!data?.orderId || !navRef.current) return;
+
+        if (data.type === 'new-order') {
+          // New order available → navigate to Orders tab
+          navRef.current.navigate('Tabs');
+        } else {
+          // Active ride notifications → navigate to the order detail / active ride
+          navRef.current.navigate('ActiveRide', { orderId: data.orderId });
+        }
+      },
+    );
+    return () => subscription.remove();
+  }, []);
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navRef}>
         {isLoggedIn ? <AppNavigator /> : <AuthNavigator />}
       </NavigationContainer>
       <StatusBar style="auto" />

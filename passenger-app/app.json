@@ -23,8 +23,11 @@
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ]
+        "ACCESS_COARSE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -33,13 +36,24 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "CrypGo използва GPS за да проследи вашия курс."
+          "locationAlwaysAndWhenInUsePermission": "CrypGo uses GPS to track your ride."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#F7931A",
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "extra": {
-      "apiBaseUrl": "http://10.0.2.2:3000"
+      "apiBaseUrl": "http://10.0.2.2:3000",
+      "eas": {
+        "projectId": "cryptgo-passenger"
+      }
     }
   }
 }
