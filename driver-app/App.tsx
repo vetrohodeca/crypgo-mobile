@@ -1,16 +1,21 @@
 import 'react-native-screens';
 import React, { useEffect, useRef } from 'react';
 import { LogBox, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider }     from 'react-native-safe-area-context';
 import { StatusBar }            from 'expo-status-bar';
-import * as Notifications       from 'expo-notifications';
 import { useAuthStore }         from './src/store/useAuthStore';
 import AuthNavigator            from './src/navigation/AuthNavigator';
 import AppNavigator             from './src/navigation/AppNavigator';
 import { registerForPushNotifications } from './src/services/pushService';
 import { notificationsApi }     from '@crypgo/shared';
 import type { AppStackParamList } from './src/navigation/types';
+
+// Expo Go (storeClient) removed remote push in SDK 53. A static
+// `import * as Notifications from 'expo-notifications'` would initialise the
+// module at load time and throw. Guard with a runtime require() instead.
+const IS_EXPO_GO = Constants.executionEnvironment === 'storeClient';
 
 // ── Suppress known Expo Go / RN 0.76 framework warnings ───────────────────
 LogBox.ignoreLogs([
@@ -49,6 +54,8 @@ export default function App() {
 
   // ── Tap handler: navigate to the relevant screen ──────────────
   useEffect(() => {
+    if (IS_EXPO_GO) return; // expo-notifications is unavailable in Expo Go
+    const Notifications = require('expo-notifications') as typeof import('expo-notifications');
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         const data = response.notification.request.content.data as {
