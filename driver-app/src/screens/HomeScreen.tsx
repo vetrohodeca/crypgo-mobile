@@ -1,0 +1,190 @@
+/**
+ * HomeScreen — Main screen for the driver.
+ *
+ * Features:
+ *   - OFFLINE <-> AVAILABLE toggle
+ *   - When AVAILABLE: starts background GPS stream -> WebSocket -> Redis GEOADD
+ *   - Map with current position
+ *   - When an active ride exists -> redirect to ActiveRide
+ */
+import React, { useEffect, useCallback, useRef } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet,
+  Switch, Alert,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { useLocation, OsmMap } from '@crypgo/shared';
+import type { OsmMarker } from '@crypgo/shared';
+import { useAuthStore }  from '@/store/useAuthStore';
+import { useDriverStore } from '@/store/useDriverStore';
+import {
+  startBackgroundTracking,
+  stopBackgroundTracking,
+  emitLocation,
+  destroyDriverSocket,
+} from '@/services/backgroundLocation.service';
+import type { AppNavProp } from '@/navigation/types';
+
+const SOFIA = { lat: 42.6977, lng: 23.3219 };
+
+export default function HomeScreen() {
+  const navigation   = useNavigation<AppNavProp>();
+  const user         = useAuthStore((s) => s.user);
+  const logout       = useAuthStore((s) => s.logout);
+  const status       = useDriverStore((s) => s.status);
+  const setStatus    = useDriverStore((s) => s.setStatus);
+  const activeOrder  = useDriverStore((s) => s.activeOrder);
+  const setGpsTrk    = useDriverStore((s) => s.setGpsTracking);
+
+  const isAvailable  = status === 'AVAILABLE' || status === 'BUSY';
+
+  // Keep a ref so the GPS watcher callback always reads the latest value
+  // without needing to restart the watcher on every status change.
+  const isAvailableRef = useRef(isAvailable);
+  useEffect(() => { isAvailableRef.current = isAvailable; }, [isAvailable]);
+
+  // GPS hook — always-on watcher for map display; emits to server only when AVAILABLE.
+  // onUpdate is stable (no deps) so the watcher is never restarted due to status changes.
+  const { currentLocation, requestPermission, startTracking } = useLocation({
+    intervalMs: 3_000,
+    onUpdate: useCallback((coords) => {
+      if (isAvailableRef.current) emitLocation(coords.lat, coords.lng);
+    }, []), // reads ref at call time — no stale closure
+  });
+
+  // Start continuous GPS watcher on mount for map display (runs regardless of OFFLINE/AVAILABLE).
+  useEffect(() => {
+    (async () => {
+      const granted = await requestPermission();
+      if (granted) await startTracking();
+    })();
+  }, []);
+
+  // When an active ride exists -> navigate to ActiveRide
+  useEffect(() => {
+    if (activeOrder?.status === 'ACCEPTED' || activeOrder?.status === 'IN_PROGRESS') {
+      navigation.navigate('ActiveRide', { orderId: activeOrder.id });
+    }
+  }, [activeOrder]);
+
+  // Toggle OFFLINE <-> AVAILABLE
+
+  const handleToggle = useCallback(async (value: boolean) => {
+    const newStatus = value ? 'AVAILABLE' : 'OFFLINE';
+
+    if (value) {
+      const granted = await requestPermission();
+      if (!granted) {
+        Alert.alert('GPS', 'Нужен е достъп до GPS за да приемате поръчки.');
+        return;
+      }
+      const bgStarted = await startBackgroundTracking();
+      if (!bgStarted) {
+        // Foreground fallback: watcher already running from mount; no-op if isTracking.
+        await startTracking();
+      }
+      setGpsTrk(true);
+    } else {
+      await stopBackgroundTracking();
+      // Do NOT stop the foreground watcher — keep it alive for map display.
+      // isAvailableRef is already false, so the watcher stops emitting immediately.
+      setGpsTrk(false);
+    }
+
+    await setStatus(newStatus as any);
+  }, [requestPermission, startTracking, setGpsTrk, setStatus]);
+
+  const handleLogout = () => {
+    stopBackgroundTracking();
+    destroyDriverSocket();
+    logout();
+  };
+
+  const center = currentLocation ?? SOFIA;
+  const myMarker: OsmMarker[] = currentLocation
+    ? [{ lat: currentLocation.lat, lng: currentLocation.lng, label: '🚕 Моята позиция', color: '#1a1a2e' }]
+    : [];
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>🚕 {user?.name?.split(' ')[0]}</Text>
+          <View style={[styles.badge, isAvailable ? styles.badgeGreen : styles.badgeGray]}>
+            <Text style={styles.badgeText}>{isAvailable ? '● ОНЛАЙН' : '○ ОФЛАЙН'}</Text>
+          </View>
+        </View>
+        <TouchableOpacity onPress={handleLogout}>
+          <Text style={styles.logoutText}>Изход</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* OSM map */}
+      <OsmMap
+        center={center}
+        zoom={14}
+        markers={myMarker}
+        locatePosition={currentLocation}
+        style={styles.map}
+      />
+
+      {/* Bottom panel */}
+      <View style={styles.panel}>
+        <Text style={styles.panelLabel}>
+          {isAvailable ? 'Готов за поръчки' : 'Превключи за да приемаш поръчки'}
+        </Text>
+
+        <View style={styles.toggleRow}>
+          <Text style={[styles.toggleLabel, !isAvailable && styles.toggleLabelActive]}>
+            ОФЛАЙН
+          </Text>
+          <Switch
+            value={isAvailable}
+            onValueChange={handleToggle}
+            trackColor={{ false: '#ccc', true: '#4caf50' }}
+            thumbColor={isAvailable ? '#fff' : '#fff'}
+            style={{ marginHorizontal: 12 }}
+          />
+          <Text style={[styles.toggleLabel, isAvailable && styles.toggleLabelActive]}>
+            ОНЛАЙН
+          </Text>
+        </View>
+
+        {isAvailable && (
+          <Text style={styles.hint}>
+            GPS стрийм активен — видими сте за пътниците
+          </Text>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const NAVY = '#1a1a2e';
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#fff' },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+  },
+  greeting:   { fontSize: 18, fontWeight: '600', color: '#333' },
+  badge:      { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4 },
+  badgeGreen: { backgroundColor: '#e8f5e9' },
+  badgeGray:  { backgroundColor: '#f5f5f5' },
+  badgeText:  { fontSize: 11, fontWeight: '700' },
+  logoutText: { color: NAVY, fontSize: 14 },
+  map:        { flex: 1 },
+  panel: {
+    padding: 20, backgroundColor: '#fff',
+    borderTopWidth: 1, borderTopColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  panelLabel: { fontSize: 15, color: '#555', marginBottom: 16 },
+  toggleRow:  { flexDirection: 'row', alignItems: 'center' },
+  toggleLabel: { fontSize: 14, color: '#bbb', fontWeight: '600' },
+  toggleLabelActive: { color: NAVY },
+  hint: { fontSize: 12, color: '#4caf50', marginTop: 12, textAlign: 'center' },
+});

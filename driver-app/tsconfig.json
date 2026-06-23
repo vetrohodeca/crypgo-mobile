@@ -1,0 +1,13 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@crypgo/shared":   ["../shared/index.ts"],
+      "@crypgo/shared/*": ["../shared/*"],
+      "@/*":               ["src/*"]
+    }
+  }
+}

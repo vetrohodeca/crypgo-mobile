@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "CrypGo Passenger",
+    "slug": "crypgo-passenger",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "crypgo",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "bg.crypgo.passenger",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "CrypGo използва GPS за да намери най-близкия шофьор до вас.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "CrypGo използва GPS за да проследи вашия курс."
+      }
+    },
+    "android": {
+      "package": "bg.crypgo.passenger",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#F7931A"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "CrypGo uses GPS to track your ride."
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#F7931A",
+          "defaultChannel": "default"
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://10.0.2.2:3000",
+      "eas": {
+        "projectId": "crypgo-passenger"
+      }
+    }
+  }
+}
